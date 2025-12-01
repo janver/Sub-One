@@ -27,7 +27,7 @@ export function useSubscriptions(initialSubsRef, markDirty) {
   }
 
   const enabledSubscriptions = computed(() => subscriptions.value.filter(s => s.enabled));
-  
+
 
 
   const subsTotalPages = computed(() => Math.ceil(subscriptions.value.length / subsItemsPerPage));
@@ -44,23 +44,20 @@ export function useSubscriptions(initialSubsRef, markDirty) {
 
   async function handleUpdateNodeCount(subId, isInitialLoad = false) {
     const subToUpdate = subscriptions.value.find(s => s.id === subId);
-    if (!subToUpdate || !HTTP_REGEX.test(subToUpdate.url)) return;
-    
+    if (!subToUpdate || !HTTP_REGEX.test(subToUpdate.url)) return false;
+
     if (!isInitialLoad) {
-        subToUpdate.isUpdating = true;
+      subToUpdate.isUpdating = true;
     }
 
     try {
       const data = await fetchNodeCount(subToUpdate.url);
       subToUpdate.nodeCount = data.count || 0;
       subToUpdate.userInfo = data.userInfo || null;
-      
-      if (!isInitialLoad) {
-        showToast(`${subToUpdate.name || '订阅'} 已更新`, 'success');
-      }
+      return true;
     } catch (error) {
-      if (!isInitialLoad) showToast(`${subToUpdate.name || '订阅'} 更新失败`, 'error');
       console.error(`Failed to fetch node count for ${subToUpdate.name}:`, error);
+      return false;
     } finally {
       subToUpdate.isUpdating = false;
     }
@@ -100,12 +97,12 @@ export function useSubscriptions(initialSubsRef, markDirty) {
     subscriptions.value = [];
     subsCurrentPage.value = 1;
   }
-  
+
   // {{ AURA-X: Modify - 使用批量更新API优化批量导入. Approval: 寸止(ID:1735459200). }}
   // [优化] 批量導入使用批量更新API，减少KV写入次数
   async function addSubscriptionsFromBulk(subs) {
     subscriptions.value.unshift(...subs);
-    
+
     // 修复分页逻辑：批量添加后跳转到第一页
     subsCurrentPage.value = 1;
 
@@ -121,7 +118,7 @@ export function useSubscriptions(initialSubsRef, markDirty) {
         if (result.success) {
           // 优化：使用Map提升查找性能
           const subsMap = new Map(subscriptions.value.map(s => [s.id, s]));
-          
+
           result.results.forEach(updateResult => {
             if (updateResult.success) {
               const sub = subsMap.get(updateResult.id);
@@ -142,7 +139,7 @@ export function useSubscriptions(initialSubsRef, markDirty) {
           showToast(`批量更新失败: ${result.message}`, 'error');
           // 降级到逐个更新
           showToast('正在降级到逐个更新模式...', 'info');
-          for(const sub of subsToUpdate) {
+          for (const sub of subsToUpdate) {
             await handleUpdateNodeCount(sub.id);
           }
         }
@@ -150,7 +147,7 @@ export function useSubscriptions(initialSubsRef, markDirty) {
         console.error('Batch update failed:', error);
         showToast('批量更新失败，正在降级到逐个更新...', 'error');
         // 降级到逐个更新
-        for(const sub of subsToUpdate) {
+        for (const sub of subsToUpdate) {
           await handleUpdateNodeCount(sub.id);
         }
       }

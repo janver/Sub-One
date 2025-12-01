@@ -10,9 +10,17 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  isBatchMode: {
+    type: Boolean,
+    default: false
+  },
+  isSelected: {
+    type: Boolean,
+    default: false
+  }
 });
 
-const emit = defineEmits(['delete', 'change', 'edit', 'copy-link', 'showNodes']);
+const emit = defineEmits(['delete', 'change', 'edit', 'copy-link', 'showNodes', 'toggleSelect']);
 
 // 计算实际的节点数量
 const totalNodeCount = computed(() => {
@@ -32,18 +40,33 @@ const totalNodeCount = computed(() => {
 
 <template>
   <div
-    class="bg-white/60 dark:bg-gray-800/75 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-4 group relative overflow-hidden transition-all duration-300 hover:scale-[1.02] flex flex-col shadow-sm hover:shadow-lg min-h-[140px]"
-    :class="{ 'opacity-50': !profile.enabled }"
+    class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-300 dark:border-gray-700 p-4 group relative overflow-hidden transition-all duration-300 hover:scale-[1.02] flex flex-col shadow-sm hover:shadow-lg min-h-[140px]"
+    :class="{ 
+      'opacity-50': !profile.enabled,
+      'ring-2 ring-purple-600 dark:ring-purple-400': isBatchMode && isSelected,
+      'cursor-pointer': isBatchMode
+    }"
+    @click="isBatchMode ? emit('toggleSelect') : null"
   >
-    <!-- 装饰性背景 -->
-    <div class="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-purple-400/10 to-pink-400/10 rounded-full -translate-y-8 translate-x-8"></div>
     
     <div class="relative z-10 flex items-start justify-between gap-3">
+      <!-- 复选框（批量模式） -->
+      <div v-if="isBatchMode" class="flex-shrink-0" @click.stop>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input 
+            type="checkbox" 
+            :checked="isSelected" 
+            @change="emit('toggleSelect')"
+            class="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+          >
+        </label>
+      </div>
+      
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-2">
           <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
             </svg>
           </div>
           <p class="font-bold text-lg text-gray-800 dark:text-gray-100 truncate" :title="profile.name">

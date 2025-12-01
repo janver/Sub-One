@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useToastStore } from '../../stores/toast.js';
-import { subscriptionParser } from '../../lib/subscriptionParser.js';
+import { subscriptionParser } from '../../lib/subscription-parser.js';
 
 const props = defineProps({
   show: Boolean,
@@ -123,6 +123,7 @@ const getProtocolInfo = (protocol) => {
     'hysteria2': { icon: '⚡', color: 'text-orange-500', bg: 'bg-orange-100 dark:bg-orange-900/30' },
     'tuic': { icon: '🚀', color: 'text-teal-500', bg: 'bg-teal-100 dark:bg-teal-900/30' },
     'socks5': { icon: '🔌', color: 'text-gray-500', bg: 'bg-gray-100 dark:bg-gray-900/30' },
+    'anytls': { icon: '🌐', color: 'text-cyan-500', bg: 'bg-cyan-100 dark:bg-cyan-900/30' },
   };
   
   return protocolMap[protocol] || { icon: '❓', color: 'text-gray-500', bg: 'bg-gray-100 dark:bg-gray-900/30' };
@@ -173,7 +174,7 @@ const refreshNodes = async () => {
 
 <template>
   <div v-if="show" class="fixed inset-0 bg-black/60 z-[99] flex items-center justify-center p-4" @click="emit('update:show', false)">
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl text-left ring-1 ring-black/5 dark:ring-white/10 flex flex-col max-h-[85vh]" @click.stop>
+    <div class="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-2xl w-full max-w-4xl text-left flex flex-col max-h-[85vh]" @click.stop>
       <!-- 标题 -->
       <div class="p-6 pb-4 flex-shrink-0">
         <h3 class="text-lg font-bold text-gray-900 dark:text-white">订阅组节点详情</h3>
@@ -257,7 +258,7 @@ const refreshNodes = async () => {
                   :checked="selectedNodes.size === filteredNodes.length && filteredNodes.length > 0"
                   :indeterminate="selectedNodes.size > 0 && selectedNodes.size < filteredNodes.length"
                   @change="toggleSelectAll"
-                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  class="h-4 w-4 rounded border-gray-300 text-indigo-600"
                 />
                 <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">
                   全选 ({{ selectedNodes.size }}/{{ filteredNodes.length }})
@@ -276,7 +277,7 @@ const refreshNodes = async () => {
                   type="checkbox"
                   :checked="selectedNodes.has(node.id)"
                   @change="toggleNodeSelection(node.id)"
-                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"
+                  class="h-4 w-4 rounded border-gray-300 text-indigo-600 mr-3"
                 />
                 
                 <div class="flex-1 min-w-0">

@@ -6,10 +6,18 @@ const props = defineProps({
   sub: {
     type: Object,
     required: true
+  },
+  isBatchMode: {
+    type: Boolean,
+    default: false
+  },
+  isSelected: {
+    type: Boolean,
+    default: false
   }
 });
 
-const emit = defineEmits(['delete', 'change', 'update', 'edit', 'showNodes']);
+const emit = defineEmits(['delete', 'change', 'update', 'edit', 'showNodes', 'toggleSelect']);
 
 const toastStore = useToastStore();
 
@@ -120,35 +128,58 @@ const expiryInfo = computed(() => {
     else if (diffDays <= 7) style = 'text-yellow-500 font-semibold';
     return {
         date: expiryDate.toLocaleDateString(),
-        daysRemaining: diffDays < 0 ? '已過期' : (diffDays === 0 ? '今天到期' : `${diffDays} 天后`),
+        daysRemaining: diffDays < 0 ? '已过期' : (diffDays === 0 ? '今天到期' : `${diffDays} 天后`),
         style: style
     };
+});
+
+const trafficColorClass = computed(() => {
+  if (!trafficInfo.value) return '';
+  const p = trafficInfo.value.percentage;
+  if (p >= 90) return 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/30';
+  if (p >= 75) return 'bg-gradient-to-r from-orange-500 to-orange-600 shadow-orange-500/30';
+  return 'bg-gradient-to-r from-blue-500 to-indigo-600 shadow-blue-500/30';
 });
 </script>
 
 <template>
   <div 
-    class="card-modern-enhanced group relative overflow-hidden transition-all duration-500 hover:scale-[1.02] flex flex-col h-full min-h-[280px] sm:min-h-[240px] shadow-modern-enhanced hover:shadow-modern-enhanced-dark"
-    :class="{ 'opacity-50': !sub.enabled, 'ring-2 ring-indigo-500/50': sub.isNew }"
+    class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-300 dark:border-gray-700 group relative overflow-hidden transition-all duration-500 hover:scale-[1.02] flex flex-col h-full min-h-[280px] sm:min-h-[240px] shadow-sm hover:shadow-lg"
+    :class="{ 
+      'opacity-50': !sub.enabled, 
+      'ring-2 ring-indigo-500/50': sub.isNew,
+      'ring-2 ring-indigo-600 dark:ring-indigo-400': isBatchMode && isSelected,
+      'cursor-pointer': isBatchMode
+    }"
     @mousedown="handleMouseDown"
+    @click="isBatchMode ? emit('toggleSelect') : null"
   >
-    <div class="relative z-10 flex-1 flex flex-col">
+    <div class="relative z-10 flex-1 flex flex-col p-5">
       <!-- 头部区域 -->
       <div class="flex items-start justify-between gap-3 mb-4 sm:mb-6">
+        <!-- 复选框（批量模式） -->
+        <div v-if="isBatchMode" class="flex-shrink-0 pt-1" @click.stop>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input 
+              type="checkbox" 
+              :checked="isSelected" 
+              @change="emit('toggleSelect')"
+              class="w-5 h-5 text-indigo-600 bg-gray-100 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+            >
+          </label>
+        </div>
+        
         <div class="w-full truncate">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:shadow-xl transition-all duration-300">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
             <div class="flex-1 min-w-0">
               <p class="font-bold text-lg text-gray-800 dark:text-gray-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-300" :title="sub.name || '未命名订阅'">
                 {{ sub.name || '未命名订阅' }}
               </p>
-              <div class="flex items-center gap-2 mt-1">
-                <span class="text-xs px-2 py-1 rounded-lg border" :class="protocolStyle.style">{{ protocolStyle.text }}</span>
-              </div>
             </div>
           </div>
         </div>
@@ -175,7 +206,7 @@ const expiryInfo = computed(() => {
             type="text" 
             :value="showUrl ? sub.url : '••••••••••••••••••••••••••••••••••••••••'"
             readonly 
-            class="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm text-gray-500 dark:text-gray-400 font-mono bg-gray-50/60 dark:bg-gray-900/75 border border-gray-200 dark:border-gray-700 rounded-xl transition-all duration-300 focus-enhanced" 
+            class="w-full px-3 sm:px-4 py-2 sm:py-3 text-sm text-gray-500 dark:text-gray-400 font-mono bg-gray-50/60 dark:bg-gray-900/75 border border-gray-200 dark:border-gray-700 rounded-xl transition-all duration-300" 
             :class="{ 'select-none': !showUrl }"
           />
           <div class="flex items-center gap-2 mt-2 sm:mt-3">
@@ -208,40 +239,63 @@ const expiryInfo = computed(() => {
         </div>
         
         <!-- 流量信息 -->
-        <div v-if="trafficInfo" class="space-y-2 sm:space-y-3">
-          <div class="flex justify-between text-xs font-mono">
-            <span class="text-gray-600 dark:text-gray-400">已用: {{ trafficInfo.used }}</span>
-            <span class="text-gray-600 dark:text-gray-400">总计: {{ trafficInfo.total }}</span>
+        <!-- 流量信息 -->
+        <div v-if="trafficInfo" class="mt-2 p-3 bg-gray-50/80 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700/50 backdrop-blur-sm">
+          <div class="flex justify-between items-end mb-2">
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+              流量使用
+            </span>
+            <div class="text-right">
+              <span class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ trafficInfo.used }}</span>
+              <span class="text-xs text-gray-400 mx-1">/</span>
+              <span class="text-xs text-gray-500">{{ trafficInfo.total }}</span>
+            </div>
           </div>
-          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-            <div class="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 h-3 rounded-full transition-all duration-500 shadow-lg" :style="{ width: trafficInfo.percentage + '%' }"></div>
+          <div class="relative w-full h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div 
+              class="absolute top-0 left-0 h-full rounded-full transition-all duration-700 ease-out shadow-sm"
+              :class="trafficColorClass"
+              :style="{ width: trafficInfo.percentage + '%' }"
+            >
+              <div class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
+            </div>
+          </div>
+          <div class="flex justify-between mt-2 items-center">
+            <span class="text-[10px] text-gray-400 font-medium">已用 {{ trafficInfo.percentage.toFixed(1) }}%</span>
+            <span v-if="expiryInfo" class="text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-gray-700 shadow-sm border border-gray-100 dark:border-gray-600" :class="expiryInfo.style">{{ expiryInfo.daysRemaining }}</span>
           </div>
         </div>
       </div>
 
       <!-- 底部控制区域 -->
-      <div class="flex justify-between items-center mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-200 dark:border-gray-700" @click.stop>
+      <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/50" @click.stop>
         <div class="flex items-center gap-3">
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" v-model="sub.enabled" @change="emit('change')" class="sr-only peer">
-            <div class="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-6 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+          <label class="relative inline-flex items-center cursor-pointer group/toggle">
+            <input type="checkbox" :checked="sub.enabled" @change="emit('change')" class="sr-only peer">
+            <div class="w-10 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-500 group-hover/toggle:shadow-md transition-all duration-300"></div>
           </label>
-          <span v-if="expiryInfo" class="text-xs font-medium px-2 sm:px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-700" :class="expiryInfo.style">{{ expiryInfo.daysRemaining }}</span>
+          <span class="text-xs text-gray-400 dark:text-gray-500 font-medium">{{ sub.enabled ? '已启用' : '已禁用' }}</span>
         </div>
         
-        <div class="flex items-center space-x-2">
-          <span class="text-xs font-semibold px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700 shadow-sm" :class="sub.isUpdating ? 'text-yellow-500 animate-pulse' : 'text-gray-700 dark:text-gray-300'">
-            {{ sub.isUpdating ? '更新中...' : `${sub.nodeCount} 节点` }}
-          </span>
-          <button @click.stop="emit('showNodes')" class="text-xs font-semibold px-3 sm:px-4 py-1 sm:py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white transition-all duration-300 shadow-sm hover:shadow-md flex items-center gap-1 sm:gap-2 transform hover:scale-105 hover-lift" title="显示节点信息">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        <div class="flex items-center gap-2">
+          <button @click.stop="emit('showNodes')" class="px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-200 border border-gray-200 dark:border-gray-700 hover:border-indigo-200 dark:hover:border-indigo-800 flex items-center gap-1.5 group/btn">
+            <span class="w-1.5 h-1.5 rounded-full" :class="sub.nodeCount > 0 ? 'bg-green-500' : 'bg-gray-300'"></span>
+            {{ sub.nodeCount }} 节点
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 opacity-0 group-hover/btn:opacity-100 -ml-1 transition-all duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
-            节点
           </button>
-          <button @click.stop="emit('update')" :disabled="sub.isUpdating" class="p-2 rounded-xl text-gray-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover-lift" title="更新节点数和流量">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{'animate-spin': sub.isUpdating}" viewBox="0 0 20 20" fill="currentColor">
+
+          <button 
+            @click.stop="emit('update')" 
+            :disabled="sub.isUpdating" 
+            class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed" 
+            :title="sub.isUpdating ? '更新中...' : '更新订阅'"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="{'animate-spin text-indigo-500': sub.isUpdating}" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
             </svg>
           </button>
