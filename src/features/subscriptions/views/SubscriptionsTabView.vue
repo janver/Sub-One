@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue';
-
+import { computed, defineAsyncComponent } from 'vue';
 import { storeToRefs } from 'pinia';
-
 import draggable from 'vuedraggable';
 
 import ConfirmModal from '../../../shared/components/ui/ConfirmModal.vue';
@@ -14,14 +12,11 @@ import { useBatchSelection } from '../../../shared/composables/useBatchSelection
 import { usePagination } from '../../../shared/composables/usePagination';
 import { useTabActionTrigger } from '../../../shared/composables/useTabActionTrigger';
 import { useDataStore } from '../../../stores/data';
-import { useToastStore } from '../../../stores/toast';
 import type { Subscription } from '../../../types/index';
-import { HTTP_REGEX } from '../../../utils/constants';
-import { createSubscription } from '../../../utils/importer';
 import Card from '../components/SubscriptionCard.vue';
+import { useSubscriptionManagement } from '../composables/useSubscriptionManagement';
 
 const props = defineProps<{
-    // Tab Action from parent (for cross-tab interaction)
     tabAction?: { action: string; payload?: any } | null;
 }>();
 
@@ -30,17 +25,39 @@ const emit = defineEmits<{
     (e: 'action-handled'): void;
 }>();
 
-// 异步加载模态框
+// Async Modal
 const SubscriptionModal = defineAsyncComponent(() => import('../components/SubscriptionModal.vue'));
 
-const isSortingSubs = ref(false);
-const hasUnsavedSortChanges = ref(false);
-
-// Utils
-const { showToast } = useToastStore();
+// Stores
 const dataStore = useDataStore();
 const { subscriptions } = storeToRefs(dataStore);
 const filteredSubscriptions = computed(() => subscriptions.value);
+
+// Hooks: Subscription Management
+const {
+    showSubModal,
+    isNewSubscription,
+    editingSubscription,
+    showDeleteSingleSubModal,
+    showDeleteAllSubsModal,
+    isUpdatingAllSubs,
+    isSortingSubs,
+    hasUnsavedSortChanges,
+    handleAddSubscription,
+    handleEditSubscription,
+    handleSaveSubscription,
+    handleSubscriptionToggle,
+    handleSubscriptionUpdate,
+    handleUpdateAllSubscriptions,
+    handleDeleteSubscriptionWithCleanup,
+    handleConfirmDeleteSingleSub,
+    handleDeleteAllSubscriptionsWithCleanup,
+    handleBatchDeleteSubs,
+    handleSortSave,
+    handleToggleSort,
+    handleDragEnd
+} = useSubscriptionManagement();
+
 const {
     currentPage,
     totalPages,
@@ -49,20 +66,10 @@ const {
     resetPage
 } = usePagination(filteredSubscriptions, 6, isSortingSubs);
 
-// Modal States
-const showSubModal = ref(false);
-const isNewSubscription = ref(false);
-const editingSubscription = ref<Subscription | null>(null);
-
-const showDeleteSingleSubModal = ref(false);
-const showDeleteAllSubsModal = ref(false);
-const deletingItemId = ref<string | null>(null);
 const subsMoreMenuItems = [
     { key: 'batch-delete', label: '批量删除' },
     { key: 'clear-all', label: '清空所有', danger: true, dividerBefore: true }
 ];
-
-const isUpdatingAllSubs = ref(false);
 
 const {
     isBatchDeleteMode,
@@ -83,120 +90,15 @@ const localSubscriptions = computed({
     }
 });
 
-// ==================== Handlers ====================
-
-// --- Add / Edit ---
-
-const handleAddSubscription = () => {
-    isNewSubscription.value = true;
-    editingSubscription.value = createSubscription('');
-    showSubModal.value = true;
+// UI Event Handlers
+const handleSaveSubWrapper = (sub: Subscription) => {
+    handleSaveSubscription(sub, () => resetPage());
 };
 
-const handleEditSubscription = (subId: string) => {
-    const sub = subscriptions.value.find((s) => s.id === subId);
-    if (sub) {
-        isNewSubscription.value = false;
-        editingSubscription.value = { ...sub };
-        showSubModal.value = true;
-    }
-};
-
-const handleSaveSubscription = async (updatedSub: Subscription) => {
-    // 验证
-    if (!updatedSub.url) return showToast('⚠️ 订阅链接不能为空', 'error');
-    if (!HTTP_REGEX.test(updatedSub.url))
-        return showToast('⚠️ 请输入有效的 http:// 或 https:// 订阅链接', 'error');
-
-    if (isNewSubscription.value) {
-        const newSubId = crypto.randomUUID();
-        const newSub = { ...updatedSub, id: newSubId };
-        const success = await dataStore.addSubscription(newSub);
-
-        if (success) {
-            resetPage();
-            // 新增后自动更新节点 (静默)
-            handleSubscriptionUpdate(newSubId, true);
-        }
-    } else {
-        await dataStore.updateSubscription(updatedSub);
-    }
-
-    showSubModal.value = false;
-};
-
-// --- Update Actions ---
-
-const handleSubscriptionToggle = async (subscription: Subscription) => {
-    if (subscription) {
-        subscription.enabled = !subscription.enabled;
-        await dataStore.updateSubscription(subscription, true);
-    }
-};
-
-const handleSubscriptionUpdate = async (subscriptionId: string, silent: boolean = false) => {
-    const sub = subscriptions.value.find((s) => s.id === subscriptionId);
-    if (!sub) return;
-
-    const success = await dataStore.updateSubscriptionNodes(subscriptionId);
-    if (success) {
-        if (!silent) showToast(`✅ ${sub.name || '订阅'} 已更新`, 'success');
-        await dataStore.saveData('订阅节点更新', false);
-    } else {
-        showToast(`❌ 更新失败: ${sub.errorMsg || '未知错误'}`, 'error');
-    }
-};
-
-const handleUpdateAllSubscriptions = async () => {
-    if (isUpdatingAllSubs.value) return;
-    isUpdatingAllSubs.value = true;
-    try {
-        const result = await dataStore.updateAllEnabledSubscriptions();
-        if (result.success) {
-            showToast(`✅ 成功更新了 ${result.count} 个订阅`, 'success');
-            await dataStore.saveData('批量更新', false);
-        } else {
-            showToast(`❌ 更新失败: ${result.message}`, 'error');
-        }
-    } catch (e) {
-        showToast('❌ 批量更新失败', 'error');
-    } finally {
-        isUpdatingAllSubs.value = false;
-    }
-};
-
-// --- Delete Actions ---
-
-const handleDeleteSubscriptionWithCleanup = (subId: string) => {
-    deletingItemId.value = subId;
-    showDeleteSingleSubModal.value = true;
-};
-
-const handleConfirmDeleteSingleSub = async () => {
-    if (!deletingItemId.value) return;
-    await dataStore.deleteSubscription(deletingItemId.value);
-    showDeleteSingleSubModal.value = false;
-};
-
-
-const handleDeleteAllSubscriptionsWithCleanup = async () => {
-    await dataStore.deleteAllSubscriptions();
-    showDeleteAllSubsModal.value = false;
-};
-
-const handleBatchDeleteSubs = async (ids: string[]) => {
-    if (!ids || ids.length === 0) return;
-    for (const id of ids) {
-        await dataStore.deleteSubscription(id);
-    }
-};
-
-// Override toggle to also close menu
 const handleToggleBatchDeleteMode = () => {
     toggleBatchDeleteMode();
 };
 
-// Override deleteSelected to emit event
 const deleteSelected = async () => {
     if (selectedCount.value === 0) return;
     const idsToDelete = getSelectedIds();
@@ -208,25 +110,9 @@ const handleSubsMoreMenuSelect = (key: string) => {
     if (key === 'batch-delete') {
         handleToggleBatchDeleteMode();
     }
-
     if (key === 'clear-all') {
         showDeleteAllSubsModal.value = true;
     }
-};
-
-const handleSortSave = async () => {
-    await dataStore.saveData('订阅排序');
-    hasUnsavedSortChanges.value = false;
-    isSortingSubs.value = false;
-};
-
-const handleToggleSort = () => {
-    isSortingSubs.value = !isSortingSubs.value;
-    if (!isSortingSubs.value) hasUnsavedSortChanges.value = false;
-};
-
-const handleDragEnd = () => {
-    hasUnsavedSortChanges.value = true;
 };
 
 useTabActionTrigger(
@@ -440,7 +326,7 @@ useTabActionTrigger(
         v-model:show="showSubModal"
         :subscription="editingSubscription"
         :is-new="isNewSubscription"
-        @save="handleSaveSubscription"
+        @save="handleSaveSubWrapper"
     />
 
     <ConfirmModal
@@ -459,8 +345,3 @@ useTabActionTrigger(
         @confirm="handleConfirmDeleteSingleSub"
     />
 </template>
-const subsMoreMenuItems = [
-    { key: 'batch-delete', label: '批量删除' },
-    { key: 'clear-all', label: '清空所有', danger: true, dividerBefore: true }
-];
-

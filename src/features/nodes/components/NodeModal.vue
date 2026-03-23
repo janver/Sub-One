@@ -11,22 +11,13 @@
 -->
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-
 import Modal from '../../../shared/components/ui/BaseModal.vue';
-import { useToastStore } from '../../../stores/toast';
 import type { Node } from '../../../types/index';
-import { getProtocol } from '../../../utils/protocols';
-import { extractHostAndPort, extractNodeName } from '../../../utils/utils';
-
-// ==================== Props 和 Emit ====================
+import { useNodeForm } from '../composables/useNodeForm';
 
 const props = defineProps<{
-    /** 显示状态 */
     show: boolean;
-    /** 正在编辑的节点（空表示新建） */
     node: Node | null;
-    /** 是否为新建模式 */
     isNew: boolean;
 }>();
 
@@ -35,152 +26,18 @@ const emit = defineEmits<{
     (e: 'save', node: Node): void;
 }>();
 
-// ==================== 状态 ====================
-
-const toastStore = useToastStore();
-
-/** 本地编辑的节点副本 */
-const localNode = ref<Node | null>(null);
-
-/** URL 错误提示 */
-const urlError = ref('');
-
-/** 是否自动提取过名称 */
-const hasAutoExtractedName = ref(false);
-
-// ==================== 计算属性 ====================
-
-/** 模态框标题 */
-const modalTitle = computed(() => (props.isNew ? '新增手动节点' : '编辑手动节点'));
-
-/** 保存按钮文本 */
-const saveButtonText = computed(() => (props.isNew ? '添加' : '保存'));
-
-/** 是否可以保存 */
-const canSave = computed(() => {
-    return localNode.value?.url && !urlError.value;
-});
-
-// ==================== 监听器 ====================
-
-/** 监听显示状态和节点变化，初始化本地副本 */
-watch(
-    [() => props.show, () => props.node],
-    ([show, node]) => {
-        if (show && node) {
-            localNode.value = JSON.parse(JSON.stringify(node));
-            urlError.value = '';
-            hasAutoExtractedName.value = false;
-        }
-    },
-    { immediate: true }
-);
-
-// ==================== 验证 ====================
-
-/** 验证节点 URL */
-const validateUrl = () => {
-    urlError.value = '';
-
-    if (!localNode.value?.url) {
-        urlError.value = '节点链接不能为空';
-        return false;
-    }
-
-    const url = localNode.value.url.trim();
-
-    // 基本检查：确保不是空字符串
-    if (!url) {
-        urlError.value = '节点链接不能为空';
-        return false;
-    }
-
-    // 简单验证：应该包含 ://
-    if (!url.includes('://')) {
-        urlError.value = '无效的节点链接格式';
-        return false;
-    }
-
-    return true;
-};
-
-/** URL 输入失焦时验证 */
-const handleUrlBlur = () => {
-    validateUrl();
-};
-
-// ==================== URL 自动提取名称 ====================
-
-/**
- * URL 输入变化时，自动提取节点名称
- */
-const handleUrlInput = () => {
-    if (!localNode.value) return;
-
-    const url = localNode.value.url?.trim();
-
-    // 如果输入了 URL 但没有名称，自动提取名称
-    if (url && !localNode.value.name && !hasAutoExtractedName.value) {
-        const extractedName = extractNodeName(url);
-        if (extractedName && extractedName !== '未命名节点') {
-            localNode.value.name = extractedName;
-            hasAutoExtractedName.value = true;
-        }
-    }
-};
-
-/**
- * 名称输入变化时，标记为手动输入
- */
-const handleNameInput = () => {
-    hasAutoExtractedName.value = false;
-};
-
-// ==================== 保存逻辑 ====================
-
-/**
- * 保存节点
- */
-const handleSave = () => {
-    if (!localNode.value) return;
-
-    // 验证
-    if (!validateUrl()) {
-        toastStore.showToast('⚠️ 请修正错误后再保存', 'error');
-        return;
-    }
-
-    // 清理空白字符
-    localNode.value.url = localNode.value.url?.trim();
-    if (localNode.value.name) {
-        localNode.value.name = localNode.value.name.trim();
-    }
-
-    // 如果没有名称，尝试自动提取
-    if (!localNode.value.name && localNode.value.url) {
-        localNode.value.name = extractNodeName(localNode.value.url);
-    }
-
-    // 解析并填充服务器信息 (server, port, type)
-    if (localNode.value.url) {
-        const { host, port } = extractHostAndPort(localNode.value.url);
-        const type = getProtocol(localNode.value.url);
-
-        localNode.value.server = host;
-        localNode.value.port = parseInt(port) || 0;
-        localNode.value.type = type as any;
-    }
-
-    // 触发保存事件
-    emit('save', localNode.value);
-};
-
-/**
- * 取消编辑
- */
-const handleCancel = () => {
-    emit('update:show', false);
-};
+const {
+    localNode,
+    urlError,
+    modalTitle,
+    saveButtonText,
+    canSave,
+    handleUrlBlur,
+    handleUrlInput,
+    handleNameInput,
+    handleSave,
+    handleCancel
+} = useNodeForm(props, emit);
 </script>
 
 <template>

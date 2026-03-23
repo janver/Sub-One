@@ -11,21 +11,14 @@
 -->
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-
+import { ref } from 'vue';
 import Modal from '../../../shared/components/ui/BaseModal.vue';
-import { useToastStore } from '../../../stores/toast';
 import type { Node } from '../../../types/index';
-import { parseImportText } from '../../../utils/importer';
-
-// ==================== Props 和 Emit ====================
+import { useSubscriptionImport } from '../composables/useSubscriptionImport';
 
 const props = defineProps<{
-    /** 显示状态 */
     show: boolean;
-    /** 批量添加节点的方法 */
     addNodesFromBulk: (nodes: Node[]) => void;
-    /** 导入成功后的回调 */
     onImportSuccess?: () => Promise<void>;
 }>();
 
@@ -33,223 +26,27 @@ const emit = defineEmits<{
     (e: 'update:show', value: boolean): void;
 }>();
 
-// ==================== 状态 ====================
+const {
+    mode,
+    subscriptionUrl,
+    textContent,
+    isLoading,
+    errorMessage,
+    isDragging,
+    handleFileSelect,
+    handleFileDrop,
+    importSubscription
+} = useSubscriptionImport(props, emit);
 
-const mode = ref<'url' | 'text'>('url');
-const subscriptionUrl = ref('');
-const textContent = ref('');
-const isLoading = ref(false);
-const errorMessage = ref('');
-const isDragging = ref(false);
+// Local UI Refs and Handlers
 const fileInputRef = ref<HTMLInputElement | null>(null);
-
-const toastStore = useToastStore();
-
-// ==================== 自定义指令 ====================
-// 简单的 v-focus 指令
-const vFocus = {
-    mounted: (el: HTMLElement) => el.focus()
-};
-
-// ==================== 监听器 ====================
-
-watch(
-    () => props.show,
-    (newVal) => {
-        if (!newVal) {
-            // 关闭时重置状态
-            subscriptionUrl.value = '';
-            textContent.value = '';
-            errorMessage.value = '';
-            isLoading.value = false;
-            mode.value = 'url';
-            isDragging.value = false;
-        }
-    }
-);
-
-// ==================== 文件处理逻辑 ====================
-
 const triggerFileInput = () => {
     fileInputRef.value?.click();
 };
 
-const readFileContent = (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-        // 5MB 限制
-        errorMessage.value = '文件过大，请上传小于 5MB 的文件';
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const result = e.target?.result;
-        if (typeof result === 'string') {
-            textContent.value = result;
-            errorMessage.value = ''; // 清除之前的错误
-            toastStore.showToast(`📄 已读取文件: ${file.name}`, 'success');
-        }
-    };
-    reader.onerror = () => {
-        errorMessage.value = '文件读取失败';
-    };
-    reader.readAsText(file);
-};
-
-const handleFileSelect = (event: Event) => {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-        readFileContent(input.files[0]);
-        // 清空 input 允许重复选择同一文件
-        input.value = '';
-    }
-};
-
-const handleFileDrop = (event: DragEvent) => {
-    isDragging.value = false;
-    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
-        readFileContent(event.dataTransfer.files[0]);
-    }
-};
-
-// ==================== 导入逻辑 ====================
-
-const importSubscription = async () => {
-    errorMessage.value = '';
-
-    if (mode.value === 'url') {
-        // URL 模式：调用后端下载订阅
-        if (!subscriptionUrl.value.trim()) {
-            errorMessage.value = '请输入订阅链接';
-            return;
-        }
-        // 简单验证 URL
-        try {
-            new URL(subscriptionUrl.value);
-        } catch {
-            errorMessage.value = '请输入有效的 URL (例如 https://example.com/...)';
-            return;
-        }
-
-        isLoading.value = true;
-
-        try {
-            const response = await fetch('/api/node_count', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    url: subscriptionUrl.value.trim(),
-                    returnNodes: true
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = (await response.json()) as any;
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-            }
-
-            const data = (await response.json()) as any;
-
-            const newNodes: Node[] = (data.nodes || []).map(
-                (n: any) =>
-                    ({
-                        ...n,
-                        id: n.id || crypto.randomUUID(),
-                        enabled: true
-                    }) as unknown as Node
-            );
-
-            if (newNodes.length > 0) {
-                props.addNodesFromBulk(newNodes);
-
-                if (props.onImportSuccess) {
-                    await props.onImportSuccess();
-                }
-
-                toastStore.showToast(`🚀 导入成功！共添加 ${newNodes.length} 个节点`, 'success');
-                emit('update:show', false);
-            } else {
-                errorMessage.value = '未能解析出任何节点，请检查链接是否正确。';
-            }
-        } catch (error: unknown) {
-            console.error('导入失败:', error);
-            const msg = error instanceof Error ? error.message : String(error);
-            errorMessage.value = `导入失败: ${msg}`;
-        } finally {
-            isLoading.value = false;
-        }
-    } else {
-        // 文本/文件模式：前端解析（保留原始URL）
-        if (!textContent.value.trim()) {
-            errorMessage.value = '请粘贴订阅内容或上传文件';
-            return;
-        }
-
-        isLoading.value = true;
-
-        try {
-            // 🎯 使用前端解析器（和单个添加节点一样）
-            const { subs, nodes } = parseImportText(textContent.value);
-
-            if (nodes.length > 0) {
-                // 前端解析的节点已经保留了原始URL
-                props.addNodesFromBulk(nodes);
-
-                if (props.onImportSuccess) {
-                    await props.onImportSuccess();
-                }
-
-                toastStore.showToast(`🚀 导入成功！共添加 ${nodes.length} 个节点`, 'success');
-                emit('update:show', false);
-            } else if (subs.length > 0) {
-                // 如果只有订阅链接，提示用户
-                errorMessage.value = `检测到 ${subs.length} 个订阅链接，请使用 URL 导入模式或在订阅管理中添加。`;
-            } else {
-                // 🔄 如果前端解析失败，尝试调用后端解析（可能是 Clash/Base64 等格式）
-                const response = await fetch('/api/node_count', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        content: textContent.value,
-                        returnNodes: true
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('后端解析也失败了');
-                }
-
-                const data = (await response.json()) as any;
-                const newNodes: Node[] = (data.nodes || []).map(
-                    (n: any) =>
-                        ({
-                            ...n,
-                            id: n.id || crypto.randomUUID(),
-                            enabled: true
-                        }) as unknown as Node
-                );
-
-                if (newNodes.length > 0) {
-                    props.addNodesFromBulk(newNodes);
-
-                    if (props.onImportSuccess) {
-                        await props.onImportSuccess();
-                    }
-
-                    toastStore.showToast(`🚀 导入成功！共添加 ${newNodes.length} 个节点`, 'success');
-                    emit('update:show', false);
-                } else {
-                    errorMessage.value = '未能解析出任何节点，请检查内容格式是否正确。';
-                }
-            }
-        } catch (error: unknown) {
-            console.error('导入失败:', error);
-            const msg = error instanceof Error ? error.message : String(error);
-            errorMessage.value = `导入失败: ${msg}。支持节点链接、Clash(YAML)、Base64 等格式。`;
-        } finally {
-            isLoading.value = false;
-        }
-    }
+// 简单的 v-focus 指令
+const vFocus = {
+    mounted: (el: HTMLElement) => el.focus()
 };
 </script>
 

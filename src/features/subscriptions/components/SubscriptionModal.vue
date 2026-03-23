@@ -12,14 +12,10 @@
 -->
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-
 import NodeFilterRuleEditor from '../../../shared/components/editors/NodeFilterRuleEditor.vue';
 import Modal from '../../../shared/components/ui/BaseModal.vue';
-import { useToastStore } from '../../../stores/toast';
 import type { Subscription } from '../../../types/index';
-
-// ==================== Props 和 Emit ====================
+import { useSubscriptionForm } from '../composables/useSubscriptionForm';
 
 const props = defineProps<{
     /** 显示状态 */
@@ -35,128 +31,24 @@ const emit = defineEmits<{
     (e: 'save', subscription: Subscription, silent?: boolean): void;
 }>();
 
-// ==================== 状态 ====================
-
-const toastStore = useToastStore();
-
-/** 本地编辑的订阅副本 */
-const localSubscription = ref<Subscription | null>(null);
-
-/** URL 错误提示 */
-const urlError = ref('');
-
-/** 名称错误提示 */
-const nameError = ref('');
-
-/** 是否显示高级选项 */
-const showAdvanced = ref(false);
-
-// ==================== 计算属性 ====================
-
-/** 模态框标题 */
-const modalTitle = computed(() => (props.isNew ? '新增订阅' : '编辑订阅'));
-
-/** 保存按钮文本 */
-const saveButtonText = computed(() => (props.isNew ? '添加' : '保存'));
-
-/** 是否可以保存 */
-const canSave = computed(() => {
-    return localSubscription.value?.url && !urlError.value && !nameError.value;
-});
-
-// ==================== 监听器 ====================
-
-/** 监听显示状态和订阅变化，初始化本地副本 */
-watch(
-    [() => props.show, () => props.subscription],
-    ([show, sub]) => {
-        if (show && sub) {
-            localSubscription.value = JSON.parse(JSON.stringify(sub));
-            urlError.value = '';
-            nameError.value = '';
-            showAdvanced.value = false;
-        }
-    },
-    { immediate: true }
+const {
+    localSubscription,
+    urlError,
+    nameError,
+    showAdvanced,
+    modalTitle,
+    saveButtonText,
+    canSave,
+    handleUrlBlur,
+    handleNameInput,
+    handleSave,
+    handleCancel,
+    toggleAdvanced
+} = useSubscriptionForm(
+    props,
+    (subscription) => emit('save', subscription),
+    () => emit('update:show', false)
 );
-
-// ==================== 验证 ====================
-
-/** 验证订阅 URL */
-const validateUrl = () => {
-    urlError.value = '';
-
-    if (!localSubscription.value?.url) {
-        urlError.value = '订阅链接不能为空';
-        return false;
-    }
-
-    const url = localSubscription.value.url.trim();
-
-    // 检查协议
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        urlError.value = '订阅链接必须以 http:// 或 https:// 开头';
-        return false;
-    }
-
-    // 验证 URL 格式
-    try {
-        new URL(url);
-    } catch {
-        urlError.value = '无效的 URL 格式';
-        return false;
-    }
-
-    return true;
-};
-
-/** URL 输入失焦时验证 */
-const handleUrlBlur = () => {
-    validateUrl();
-};
-
-/** 名称输入变化时清除错误 */
-const handleNameInput = () => {
-    nameError.value = '';
-};
-
-// ==================== 保存逻辑 ====================
-
-/**
- * 保存订阅
- */
-const handleSave = () => {
-    if (!localSubscription.value) return;
-
-    // 验证
-    if (!validateUrl()) {
-        toastStore.showToast('⚠️ 请修正错误后再保存', 'error');
-        return;
-    }
-
-    // 清理空白字符
-    localSubscription.value.url = localSubscription.value.url?.trim();
-    if (localSubscription.value.name) {
-        localSubscription.value.name = localSubscription.value.name.trim();
-    }
-
-    // 触发保存事件
-    emit('save', localSubscription.value);
-};
-
-/**
- * 取消编辑
- */
-const handleCancel = () => {
-    emit('update:show', false);
-};
-
-/**
- * 切换高级选项
- */
-const toggleAdvanced = () => {
-    showAdvanced.value = !showAdvanced.value;
-};
 </script>
 
 <template>

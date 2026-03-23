@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue';
-
-import { storeToRefs } from 'pinia';
-
+import { computed, defineAsyncComponent } from 'vue';
 import draggable from 'vuedraggable';
 
 import ConfirmModal from '../../../shared/components/ui/ConfirmModal.vue';
@@ -14,17 +11,19 @@ import { useBatchSelection } from '../../../shared/composables/useBatchSelection
 import { usePagination } from '../../../shared/composables/usePagination';
 import { useTabActionTrigger } from '../../../shared/composables/useTabActionTrigger';
 import { useDataStore } from '../../../stores/data';
-import { useToastStore } from '../../../stores/toast';
+import { storeToRefs } from 'pinia';
 import type { Node } from '../../../types/index';
-import { createNode, parseImportText } from '../../../utils/importer';
 import ManualNodeCard from '../components/ManualNodeCard.vue';
+import { useNodeManagement } from '../composables/useNodeManagement';
 
 const props = defineProps<{
     tabAction?: { action: string } | null;
 }>();
+
 const emit = defineEmits<{
     (e: 'action-handled'): void;
 }>();
+
 // Async Components
 const NodeModal = defineAsyncComponent(() => import('../components/NodeModal.vue'));
 const BulkImportModal = defineAsyncComponent(
@@ -34,26 +33,37 @@ const SubscriptionImportModal = defineAsyncComponent(
     () => import('../components/SubscriptionImportModal.vue')
 );
 
-// Utils
-const { showToast } = useToastStore();
 const dataStore = useDataStore();
 const { manualNodes } = storeToRefs(dataStore);
 
-// Local State
-const searchTerm = ref('');
-const isSortingNodes = ref(false); // Local sort state
-const hasUnsavedSortChanges = ref(false);
+// Hooks
+const {
+    searchTerm,
+    isSortingNodes,
+    hasUnsavedSortChanges,
+    filteredNodes,
+    isNewNode,
+    editingNode,
+    showNodeModal,
+    showBulkImportModal,
+    showSubscriptionImportModal,
+    showDeleteNodesModal,
+    showDeleteSingleNodeModal,
+    handleAddNode,
+    handleEditNode,
+    handleSaveNode,
+    handleDeleteNode,
+    handleConfirmDeleteSingleNode,
+    handleDeleteAllNodes,
+    handleBatchDelete,
+    handleBulkImport,
+    handleDeduplicate,
+    handleAutoSort,
+    handleToggleSort,
+    handleSaveSort,
+    handleDragEnd
+} = useNodeManagement();
 
-const filteredNodes = computed(() => {
-    if (!searchTerm.value) return manualNodes.value;
-    const term = searchTerm.value.toLowerCase();
-    return manualNodes.value.filter(
-        (node) =>
-            (node.name && node.name.toLowerCase().includes(term)) ||
-            (node.server && node.server.toLowerCase().includes(term)) ||
-            (node.type && node.type.toLowerCase().includes(term))
-    );
-});
 const {
     currentPage,
     totalPages,
@@ -62,15 +72,6 @@ const {
     resetPage
 } = usePagination(filteredNodes, 15, isSortingNodes);
 
-// Modal States
-const isNewNode = ref(false);
-const editingNode = ref<Node | null>(null);
-const showNodeModal = ref(false);
-const showBulkImportModal = ref(false);
-const showSubscriptionImportModal = ref(false);
-const showDeleteNodesModal = ref(false);
-const showDeleteSingleNodeModal = ref(false);
-const deletingItemId = ref<string | null>(null);
 const nodesMoreMenuItems = [
     { key: 'auto-sort', label: '一键排序' },
     { key: 'deduplicate', label: '一键去重' },
@@ -78,7 +79,6 @@ const nodesMoreMenuItems = [
     { key: 'clear-all', label: '清空所有', danger: true, dividerBefore: true }
 ];
 
-// Batch Select
 const {
     isBatchDeleteMode,
     selectedCount,
@@ -102,96 +102,15 @@ const localManualNodes = computed({
     }
 });
 
-// Handlers
-
-const handleAddNode = () => {
-    isNewNode.value = true;
-    editingNode.value = createNode('');
-    showNodeModal.value = true;
+// UI Event Callbacks
+const handleSaveNodeWrapper = async (updatedNode?: Node) => {
+    handleSaveNode(updatedNode, () => resetPage());
 };
 
-const handleEditNode = (nodeId: string) => {
-    const node = manualNodes.value.find((n) => n.id === nodeId);
-    if (node) {
-        isNewNode.value = false;
-        editingNode.value = { ...node };
-        showNodeModal.value = true;
-    }
+const handleBulkImportWrapper = async (importText: string) => {
+    handleBulkImport(importText, () => resetPage());
 };
 
-const handleSaveNode = async (updatedNode?: Node) => {
-    const nodeToSave = updatedNode || editingNode.value;
-    if (!nodeToSave?.url) return showToast('⚠️ 节点链接不能为空', 'error');
-
-    if (isNewNode.value) {
-        await dataStore.addNode(nodeToSave);
-        resetPage();
-    } else {
-        await dataStore.updateNode(nodeToSave);
-    }
-
-    showNodeModal.value = false;
-};
-
-const handleDeleteNode = (nodeId: string) => {
-    deletingItemId.value = nodeId;
-    showDeleteSingleNodeModal.value = true;
-};
-
-const handleConfirmDeleteSingleNode = async () => {
-    if (!deletingItemId.value) return;
-    await dataStore.deleteNode(deletingItemId.value);
-    showDeleteSingleNodeModal.value = false;
-};
-
-const handleDeleteAllNodes = async () => {
-    await dataStore.deleteAllNodes();
-    showDeleteNodesModal.value = false;
-};
-
-const handleBatchDelete = async (ids: string[]) => {
-    if (!ids || ids.length === 0) return;
-    await dataStore.batchDeleteNodes(ids);
-    toggleBatchDeleteMode();
-    deselectAll(); // Clear selection
-};
-
-const handleBulkImport = async (importText: string) => {
-    const { subs, nodes } = parseImportText(importText);
-    if (subs.length > 0) await dataStore.addSubscriptionsFromBulk(subs);
-    if (nodes.length > 0) {
-        await dataStore.addNodesFromBulk(nodes);
-        resetPage();
-    }
-
-    showToast(`✅ 成功导入 ${subs.length} 条订阅和 ${nodes.length} 个手动节点`, 'success');
-    showBulkImportModal.value = false;
-};
-
-const handleDeduplicate = async () => {
-    await dataStore.deduplicateNodes();
-};
-
-const handleAutoSort = async () => {
-    await dataStore.autoSortNodes();
-};
-
-const handleToggleSort = () => {
-    isSortingNodes.value = !isSortingNodes.value;
-    if (!isSortingNodes.value) hasUnsavedSortChanges.value = false;
-};
-
-const handleSaveSort = async () => {
-    await dataStore.saveData('节点排序');
-    hasUnsavedSortChanges.value = false;
-    isSortingNodes.value = false;
-};
-
-const handleSubscriptionImportSuccess = async () => {
-    resetPage();
-};
-
-// UI Handlers
 const handleToggleBatchDeleteMode = () => {
     toggleBatchDeleteMode();
 };
@@ -199,29 +118,29 @@ const handleToggleBatchDeleteMode = () => {
 const deleteSelected = async () => {
     if (selectedCount.value === 0) return;
     const idsToDelete = getSelectedIds();
-    await handleBatchDelete(idsToDelete);
-};
-
-const handleDragEnd = () => {
-    hasUnsavedSortChanges.value = true;
+    await handleBatchDelete(idsToDelete, () => {
+        toggleBatchDeleteMode();
+        deselectAll();
+    });
 };
 
 const handleNodesMoreMenuSelect = async (key: string) => {
     if (key === 'auto-sort') {
         await handleAutoSort();
     }
-
     if (key === 'deduplicate') {
         await handleDeduplicate();
     }
-
     if (key === 'batch-delete') {
         handleToggleBatchDeleteMode();
     }
-
     if (key === 'clear-all') {
         showDeleteNodesModal.value = true;
     }
+};
+
+const handleSubscriptionImportSuccess = async () => {
+    resetPage();
 };
 
 useTabActionTrigger(
@@ -426,7 +345,7 @@ useTabActionTrigger(
         </EmptyState>
 
         <!-- Modals -->
-        <BulkImportModal v-model:show="showBulkImportModal" @import="handleBulkImport" />
+        <BulkImportModal v-model:show="showBulkImportModal" @import="handleBulkImportWrapper" />
 
         <ConfirmModal
             v-model:show="showDeleteNodesModal"
@@ -449,7 +368,7 @@ useTabActionTrigger(
             v-model:show="showNodeModal"
             :node="editingNode"
             :is-new="isNewNode"
-            @save="handleSaveNode"
+            @save="handleSaveNodeWrapper"
         />
 
         <SubscriptionImportModal

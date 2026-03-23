@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue';
-
+import { computed, defineAsyncComponent } from 'vue';
 import { storeToRefs } from 'pinia';
 
 import ConfirmModal from '../../../shared/components/ui/ConfirmModal.vue';
@@ -12,9 +11,9 @@ import { useBatchSelection } from '../../../shared/composables/useBatchSelection
 import { usePagination } from '../../../shared/composables/usePagination';
 import { useTabActionTrigger } from '../../../shared/composables/useTabActionTrigger';
 import { useDataStore } from '../../../stores/data';
-import { useToastStore } from '../../../stores/toast';
 import type { Profile } from '../../../types/index';
 import ProfileCard from '../components/ProfileCard.vue';
+import { useProfileManagement } from '../composables/useProfileManagement';
 
 const props = defineProps<{
     tabAction?: { action: string } | null;
@@ -27,11 +26,14 @@ const emit = defineEmits<{
 
 // Async components
 const ProfileModal = defineAsyncComponent(() => import('../components/ProfileModal.vue'));
+const SubscriptionExportModal = defineAsyncComponent(
+    () => import('../components/SubscriptionExportModal.vue')
+);
 
-// Utils
-const { showToast } = useToastStore();
+// Stores
 const dataStore = useDataStore();
 const { profiles, subscriptions, manualNodes, config } = storeToRefs(dataStore);
+
 const {
     currentPage,
     totalPages,
@@ -40,21 +42,30 @@ const {
     resetPage
 } = usePagination(computed(() => profiles.value), 9);
 
-// Modal States
-const showProfileModal = ref(false);
-const isNewProfile = ref(false);
-const editingProfile = ref<Profile | null>(null);
+// Profile Management Hooks
+const {
+    showProfileModal,
+    isNewProfile,
+    editingProfile,
+    showExportModal,
+    exportingProfile,
+    showDeleteSingleProfileModal,
+    showDeleteAllProfilesModal,
+    handleAddProfile,
+    handleEditProfile,
+    handleSaveProfile: baseHandleSaveProfile,
+    handleDeleteProfile,
+    handleConfirmDeleteSingleProfile,
+    handleDeleteAllProfiles,
+    handleToggleProfile,
+    handleCopyLink
+} = useProfileManagement();
 
-// Export Modal
-const SubscriptionExportModal = defineAsyncComponent(
-    () => import('../components/SubscriptionExportModal.vue')
-);
-const showExportModal = ref(false);
-const exportingProfile = ref<Profile | null>(null);
+// Wrapper for saving profile to reset page on creation
+const handleSaveProfile = (profileData: Profile) => {
+    baseHandleSaveProfile(profileData, () => resetPage());
+};
 
-const showDeleteSingleProfileModal = ref(false);
-const showDeleteAllProfilesModal = ref(false);
-const deletingItemId = ref<string | null>(null);
 const profilesMoreMenuItems = [
     { key: 'batch-delete', label: '批量删除' },
     { key: 'clear-all', label: '清空所有', danger: true, dividerBefore: true }
@@ -73,65 +84,6 @@ const {
     getSelectedIds
 } = useBatchSelection(paginatedProfiles);
 
-// Handlers
-
-const handleAddProfile = () => {
-    if (!config.value.profileToken?.trim()) {
-        return showToast('⚠️ 请先在"设置"中配置"订阅组分享Token"', 'error');
-    }
-    isNewProfile.value = true;
-    editingProfile.value = {
-        id: '',
-        name: '',
-        enabled: true,
-        subscriptions: [],
-        manualNodes: [],
-        customId: '',
-        type: 'base64'
-    };
-    showProfileModal.value = true;
-};
-
-const handleEditProfile = (profileId: string) => {
-    const profile = profiles.value.find((p) => p.id === profileId);
-    if (profile) {
-        isNewProfile.value = false;
-        editingProfile.value = JSON.parse(JSON.stringify(profile));
-        showProfileModal.value = true;
-    }
-};
-
-const handleSaveProfile = async (profileData: Profile) => {
-    if (!profileData?.name) return showToast('⚠️ 订阅组名称不能为空', 'error');
-
-    const success = await (isNewProfile.value
-        ? dataStore.addProfile(profileData)
-        : dataStore.updateProfile(profileData));
-
-    if (success) {
-        showProfileModal.value = false;
-        if (isNewProfile.value) {
-            resetPage();
-        }
-    }
-};
-
-const handleDeleteProfile = (profileId: string) => {
-    deletingItemId.value = profileId;
-    showDeleteSingleProfileModal.value = true;
-};
-
-const handleConfirmDeleteSingleProfile = async () => {
-    if (!deletingItemId.value) return;
-    await dataStore.deleteProfile(deletingItemId.value);
-    showDeleteSingleProfileModal.value = false;
-};
-
-const handleDeleteAllProfiles = async () => {
-    await dataStore.deleteAllProfiles();
-    showDeleteAllProfilesModal.value = false;
-};
-
 const handleBatchDelete = async (ids: string[]) => {
     if (!ids || ids.length === 0) return;
     await dataStore.batchDeleteProfiles(ids);
@@ -139,19 +91,6 @@ const handleBatchDelete = async (ids: string[]) => {
     deselectAll();
 };
 
-const handleToggleProfile = async (profile: Profile) => {
-    await dataStore.toggleProfile(profile.id, profile.enabled);
-};
-
-const handleCopyLink = (id: string) => {
-    const profile = profiles.value.find((p) => p.id === id);
-    if (!profile) return;
-
-    exportingProfile.value = profile;
-    showExportModal.value = true;
-};
-
-// UI Handlers
 const handleToggleBatchDeleteMode = () => {
     toggleBatchDeleteMode();
 };

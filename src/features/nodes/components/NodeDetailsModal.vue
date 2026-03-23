@@ -18,17 +18,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-
-import { storeToRefs } from 'pinia';
-
-import { Base64 } from 'js-base64';
-
-import { useDataStore } from '../../../stores/data';
-import { useToastStore } from '../../../stores/toast';
 import type { Profile, Subscription } from '../../../types/index';
-import { getProtocol, getProtocolInfo } from '../../../utils/protocols';
+import { getProtocolInfo } from '../../../utils/protocols';
 import { filterNodes } from '../../../utils/search';
-import { copyToClipboard } from '../../../utils/utils';
+import { useNodeFetching } from '../composables/useNodeFetching';
+import { useNodeSelection } from '../composables/useNodeSelection';
 
 const props = defineProps<{
     show: boolean;
@@ -43,253 +37,46 @@ const emit = defineEmits<{
     (e: 'update:show', value: boolean): void;
 }>();
 
-interface DisplayNode {
-    id: string;
-    name: string;
-    url: string;
-    protocol: string;
-    server?: string;
-    port?: number | string;
-    enabled?: boolean;
-    type?: 'manual' | 'subscription';
-    subscriptionName?: string;
-}
-
-const nodes = ref<DisplayNode[]>([]);
-const isLoading = ref(false);
-const errorMessage = ref('');
 const searchTerm = ref('');
-const selectedNodes = ref(new Set<string>());
 
-const toastStore = useToastStore();
-const dataStore = useDataStore();
-const { subscriptions: allSubscriptions, manualNodes: allManualNodes } = storeToRefs(dataStore);
+// 抽取的核心逻辑 Hooks
+const {
+    nodes,
+    isLoading,
+    errorMessage,
+    loadData,
+    refreshNodes,
+    extractHost
+} = useNodeFetching(props);
 
-// 监听模态框显示状态
-watch(
-    () => props.show,
-    async (newVal) => {
-        if (newVal) {
-            if (props.profile) {
-                await fetchProfileNodes();
-            } else if (props.subscription) {
-                await fetchNodes();
-            }
-        } else {
-            nodes.value = [];
-            searchTerm.value = '';
-            selectedNodes.value.clear();
-            errorMessage.value = '';
-        }
-    }
-);
-
-// 过滤后的节点列表（支持国家/地区别名智能搜索）
+// 过滤计算属性
 const filteredNodes = computed(() => {
     return filterNodes(nodes.value, searchTerm.value);
 });
 
-// 获取单个订阅的节点信息
-const fetchNodes = async () => {
-    if (!props.subscription?.url) return;
+const {
+    selectedNodes,
+    toggleNodeSelection,
+    toggleSelectAll,
+    copySelectedNodes,
+    handleCopySingle,
+    clearSelection
+} = useNodeSelection(filteredNodes);
 
-    isLoading.value = true;
-    errorMessage.value = '';
-
-    try {
-        // 使用 /api/node_count API 获取节点列表（后端已解析）
-        const response = await fetch('/api/node_count', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                url: props.subscription.url,
-                returnNodes: true, // 请求返回节点列表
-                exclude: props.subscription?.exclude || '' // 应用过滤规则
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = (await response.json()) as any;
-
-        // 后端已解析并过滤，直接使用返回的节点
-        if (data.nodes && data.nodes.length > 0) {
-            nodes.value = data.nodes.map((n: any) => ({
-                id: n.id,
-                name: n.name,
-                url: n.url || '',
-                protocol: (n.type || n.protocol || getProtocol(n.url || '')).toLowerCase(),
-                server: n.server || '',
-                port: n.port || '',
-                enabled: true
-            }));
+// 监听展示状态，载入数据或重置状态
+watch(
+    () => props.show,
+    async (newVal) => {
+        if (newVal) {
+            await loadData();
         } else {
-            nodes.value = [];
+            searchTerm.value = '';
+            clearSelection();
         }
-    } catch (error: unknown) {
-        console.error('获取节点信息失败:', error);
-        const msg = error instanceof Error ? error.message : String(error);
-        errorMessage.value = `获取节点信息失败: ${msg}`;
-        toastStore.showToast('❌ 获取节点信息失败', 'error');
-    } finally {
-        isLoading.value = false;
     }
-};
+);
 
-// 获取订阅组的所有节点信息 (聚合逻辑)
-const fetchProfileNodes = async () => {
-    if (!props.profile) return;
-
-    isLoading.value = true;
-    errorMessage.value = '';
-
-    try {
-        const profileNodes: DisplayNode[] = [];
-
-        // 1. 添加手动节点
-        if (allManualNodes.value) {
-            const selectedManualNodes = (allManualNodes.value || []).filter(
-                (node) => props.profile?.manualNodes?.includes(node.id) ?? false
-            ) as any[];
-
-            for (const node of selectedManualNodes) {
-                profileNodes.push({
-                    id: node.id,
-                    name: node.name || '未命名节点',
-                    url: node.url || '',
-                    protocol: (
-                        node.type ||
-                        node.protocol ||
-                        getProtocol(node.url || '')
-                    ).toLowerCase(),
-                    server: node.server || '',
-                    port: node.port || '',
-                    enabled: node.enabled,
-                    type: 'manual'
-                });
-            }
-        }
-
-        // 2. 添加订阅节点
-        if (allSubscriptions.value) {
-            const selectedSubscriptions = allSubscriptions.value.filter(
-                (sub) => (props.profile?.subscriptions?.includes(sub.id) ?? false) && sub.enabled
-            );
-
-            // 并行获取所有订阅内容，提升速度
-            const promises = selectedSubscriptions.map(async (subscription) => {
-                if (subscription.url && subscription.url.startsWith('http')) {
-                    try {
-                        // 使用 /api/node_count API 获取节点列表
-                        const response = await fetch('/api/node_count', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                url: subscription.url,
-                                returnNodes: true, // 请求返回节点列表
-                                exclude: subscription.exclude || '' // 应用过滤规则
-                            })
-                        });
-
-                        if (response.ok) {
-                            const data = (await response.json()) as any;
-                            // 后端已解析并过滤，直接使用返回的节点
-                            if (data.nodes && data.nodes.length > 0) {
-                                return data.nodes.map((node: any) => ({
-                                    id: node.id,
-                                    name: node.name,
-                                    url: node.url || '',
-                                    protocol: (
-                                        node.type ||
-                                        node.protocol ||
-                                        getProtocol(node.url || '')
-                                    ).toLowerCase(),
-                                    server: node.server || '',
-                                    port: node.port || '',
-                                    enabled: true,
-                                    type: 'subscription' as const,
-                                    subscriptionName: subscription.name || ''
-                                }));
-                            }
-                        }
-                    } catch (error) {
-                        console.error(`获取订阅 ${subscription.name} 节点失败:`, error);
-                    }
-                }
-                return [];
-            });
-
-            const results = await Promise.all(promises);
-            results.forEach((subNodes: DisplayNode[]) => profileNodes.push(...subNodes));
-        }
-
-        nodes.value = profileNodes;
-    } catch (error: unknown) {
-        console.error('获取订阅组节点信息失败:', error);
-        const msg = error instanceof Error ? error.message : String(error);
-        errorMessage.value = `获取节点信息失败: ${msg}`;
-        toastStore.showToast('❌ 获取节点信息失败', 'error');
-    } finally {
-        isLoading.value = false;
-    }
-};
-
-// 选择/取消选择节点
-const toggleNodeSelection = (nodeId: string) => {
-    if (selectedNodes.value.has(nodeId)) {
-        selectedNodes.value.delete(nodeId);
-    } else {
-        selectedNodes.value.add(nodeId);
-    }
-};
-
-// 全选/取消全选
-const toggleSelectAll = () => {
-    if (selectedNodes.value.size === filteredNodes.value.length) {
-        selectedNodes.value.clear();
-    } else {
-        filteredNodes.value.forEach((node) => selectedNodes.value.add(node.id));
-    }
-};
-
-// 复制选中的节点
-const copySelectedNodes = async () => {
-    const selectedNodeUrls = filteredNodes.value
-        .filter((node) => selectedNodes.value.has(node.id))
-        .map((node) => node.url);
-
-    if (selectedNodeUrls.length === 0) {
-        toastStore.showToast('⚠️ 请先选择要复制的节点', 'warning');
-        return;
-    }
-
-    const success = await copyToClipboard(selectedNodeUrls.join('\n'));
-    if (success) {
-        toastStore.showToast(`📋 已复制 ${selectedNodeUrls.length} 个节点到剪贴板`, 'success');
-    } else {
-        toastStore.showToast('❌ 复制失败', 'error');
-    }
-};
-
-// 复制单个节点到剪贴板
-const handleCopySingle = async (url: string) => {
-    const success = await copyToClipboard(url);
-    if (success) {
-        toastStore.showToast('📋 已复制节点链接', 'success');
-    } else {
-        toastStore.showToast('❌ 复制失败', 'error');
-    }
-};
-
-// 刷新节点信息
-const refreshNodes = async () => {
-    await fetchNodes();
-    toastStore.showToast('🔄 节点信息已刷新', 'success');
-};
-
-// 键盘事件处理 - ESC 键关闭
+// 键盘事件：Esc 关闭模态框
 const handleKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && props.show) {
         emit('update:show', false);
@@ -303,54 +90,6 @@ onMounted(() => {
 onUnmounted(() => {
     window.removeEventListener('keydown', handleKeydown);
 });
-// 修改后的提取主机名 helper
-const extractHost = (url: string) => {
-    if (!url) return '';
-
-    try {
-        // 1. 特殊处理 VMess 协议
-        if (url.startsWith('vmess://')) {
-            const base64 = url.replace('vmess://', '');
-            try {
-                // 使用 js-base64 解码（自动处理 Unicode）
-                const decoded = Base64.decode(base64);
-                const config = JSON.parse(decoded);
-                // VMess JSON 标准字段: add (地址), port (端口)
-                if (config.add && config.port) {
-                    return `${config.add}:${config.port}`;
-                }
-                return config.add || '未知地址';
-            } catch (e) {
-                console.warn('VMess 解析失败:', e);
-                return 'VMess 格式错误';
-            }
-        }
-
-        // 2. 特殊处理纯 Base64 的 SS (Legacy 格式: ss://Base64)
-        // 如果是 ss:// 且不包含 @ 符号，通常是旧版 Base64 格式
-        if (url.startsWith('ss://') && !url.includes('@')) {
-            const base64 = url.replace('ss://', '').split('#')[0]; // 去掉末尾可能的 #备注
-            try {
-                // 使用 js-base64 解码
-                const decoded = Base64.decode(base64);
-                // 解码后通常是 method:password@hostname:port
-                const parts = decoded.split('@');
-                if (parts.length > 1) {
-                    return parts[1]; // 返回 hostname:port
-                }
-            } catch (e) {
-                // 解码失败则继续尝试标准 URL 解析
-            }
-        }
-
-        // 3. 处理标准 URL 格式 (VLESS, Hysteria, Trojan, 标准 SS)
-        const urlObj = new URL(url);
-        if (!urlObj.hostname) return '';
-        return urlObj.port ? `${urlObj.hostname}:${urlObj.port}` : urlObj.hostname;
-    } catch (e) {
-        return 'URL 解析错误';
-    }
-};
 </script>
 
 <template>
