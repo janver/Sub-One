@@ -215,7 +215,11 @@ function mapLoonParams(proxy: Partial<ProxyNode>, params: Record<string, string>
     if (params.encrypt || params['encrypt-method'])
         proxy.cipher = params.encrypt || params['encrypt-method'];
 
-    proxy.tls = params.tls === 'true' || params['over-tls'] === 'true' || proxy.type === 'https' || proxy.type === 'anytls';
+    proxy.tls =
+        params.tls === 'true' ||
+        params['over-tls'] === 'true' ||
+        proxy.type === 'https' ||
+        proxy.type === 'anytls';
     if (params.sni || params['tls-name']) proxy.sni = params.sni || params['tls-name'];
     if (params['skip-cert-verify'])
         proxy['skip-cert-verify'] = params['skip-cert-verify'] === 'true';

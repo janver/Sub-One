@@ -63,7 +63,11 @@ export class SingboxConverter extends BaseConverter {
                         const opts = (node['plugin-opts'] || {}) as any;
                         const stTag = `${node.name}_shadowtls`;
                         outbound.detour = stTag;
-                        if (node['udp-over-tcp']) outbound.udp_over_tcp = { enabled: true, version: node['udp-over-tcp-version'] === 2 ? 2 : 1 };
+                        if (node['udp-over-tcp'])
+                            outbound.udp_over_tcp = {
+                                enabled: true,
+                                version: node['udp-over-tcp-version'] === 2 ? 2 : 1
+                            };
                         const stOutbound: any = {
                             type: 'shadowtls',
                             tag: stTag,
@@ -74,7 +78,10 @@ export class SingboxConverter extends BaseConverter {
                             tls: {
                                 enabled: true,
                                 server_name: opts.host,
-                                utls: { enabled: true, fingerprint: node['client-fingerprint'] || 'chrome' }
+                                utls: {
+                                    enabled: true,
+                                    fingerprint: node['client-fingerprint'] || 'chrome'
+                                }
                             }
                         };
                         // 返回数组：SS 本体在前，shadowtls 在后
@@ -94,7 +101,8 @@ export class SingboxConverter extends BaseConverter {
                         outbound.host_key_algorithms = [node['server-fingerprint'].split(' ')[0]];
                     }
                     if (node['host-key']) outbound.host_key = node['host-key'];
-                    if (node['host-key-algorithms']) outbound.host_key_algorithms = node['host-key-algorithms'];
+                    if (node['host-key-algorithms'])
+                        outbound.host_key_algorithms = node['host-key-algorithms'];
                     delete outbound.server;
                     delete outbound.server_port;
                     outbound.server = node.server;
@@ -195,13 +203,19 @@ export class SingboxConverter extends BaseConverter {
                     if (wgPeers && wgPeers.length > 0) {
                         outbound.peers = wgPeers.map((p: any) => {
                             const peer: any = {
-                                server: p.server || (p.endpoint ? p.endpoint.split(':')[0] : node.server),
+                                server:
+                                    p.server ||
+                                    (p.endpoint ? p.endpoint.split(':')[0] : node.server),
                                 server_port: parseInt(
-                                    String(p.port || (p.endpoint ? p.endpoint.split(':')[1] : node.port)),
+                                    String(
+                                        p.port ||
+                                            (p.endpoint ? p.endpoint.split(':')[1] : node.port)
+                                    ),
                                     10
                                 ),
                                 public_key: p['public-key'],
-                                allowed_ips: p['allowed-ips'] || p.allowed_ips || ['0.0.0.0/0', '::/0']
+                                allowed_ips: p['allowed-ips'] ||
+                                    p.allowed_ips || ['0.0.0.0/0', '::/0']
                             };
                             if (typeof p.reserved === 'string') {
                                 peer.reserved = [p.reserved];
@@ -215,7 +229,8 @@ export class SingboxConverter extends BaseConverter {
                         // 单 peer 简化结构
                         outbound.peer_public_key = node['public-key'] || node.publicKey;
                         if (node['pre-shared-key'] || node['preshared-key'])
-                            outbound.pre_shared_key = node['pre-shared-key'] || node['preshared-key'];
+                            outbound.pre_shared_key =
+                                node['pre-shared-key'] || node['preshared-key'];
                     }
                     break;
                 }
@@ -235,7 +250,8 @@ export class SingboxConverter extends BaseConverter {
             // Common opts
             if (node.tfo) outbound.tcp_fast_open = true;
             if (node['underlying-proxy'] || node['dialer-proxy'])
-                outbound.detour = outbound.detour || node['underlying-proxy'] || node['dialer-proxy'];
+                outbound.detour =
+                    outbound.detour || node['underlying-proxy'] || node['dialer-proxy'];
 
             // shadow-tls 双 outbound 拆分
             if ((outbound as any).__extra) {

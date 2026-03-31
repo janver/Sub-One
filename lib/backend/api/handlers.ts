@@ -4,14 +4,14 @@ import { ProxyNode, convert, parse, process } from '../proxy';
 import { AppConfig, Profile, Subscription, SubscriptionUserInfo } from '../proxy/types';
 import {
     ImportMode,
+    batchDeleteServerSnapshots,
+    createServerSnapshot,
+    deleteServerSnapshot,
     exportAllData,
     importAllData,
-    validateBackup,
-    createServerSnapshot,
     listServerSnapshots,
-    deleteServerSnapshot,
-    batchDeleteServerSnapshots,
-    restoreFromServerSnapshot
+    restoreFromServerSnapshot,
+    validateBackup
 } from '../services/backup';
 import { autoMigrate } from '../services/migration';
 import { checkAndNotify, sendTgNotification } from '../services/notification';
@@ -627,7 +627,11 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                         }
                         return val;
                     } else {
-                        return { id: subsToUpdate[index].id, success: false, error: 'Promise rejected' };
+                        return {
+                            id: subsToUpdate[index].id,
+                            success: false,
+                            error: 'Promise rejected'
+                        };
                     }
                 });
 
@@ -1064,7 +1068,8 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         }
 
         case '/backup/snapshot/create': {
-            if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+            if (request.method !== 'POST')
+                return new Response('Method Not Allowed', { status: 405 });
             try {
                 const { name } = (await request.json()) as { name?: string };
                 const storage = await getStorage(env);
@@ -1083,14 +1088,19 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             } catch (error: any) {
                 console.error('[API Error /backup/snapshot/create]', error);
                 return new Response(
-                    JSON.stringify({ success: false, error: '创建快照失败', message: error.message }),
+                    JSON.stringify({
+                        success: false,
+                        error: '创建快照失败',
+                        message: error.message
+                    }),
                     { status: 500 }
                 );
             }
         }
 
         case '/backup/snapshot/list': {
-            if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+            if (request.method !== 'GET')
+                return new Response('Method Not Allowed', { status: 405 });
             try {
                 const storage = await getStorage(env);
                 const snapshots = await listServerSnapshots(storage);
@@ -1101,14 +1111,19 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             } catch (error: any) {
                 console.error('[API Error /backup/snapshot/list]', error);
                 return new Response(
-                    JSON.stringify({ success: false, error: '获取快照列表失败', message: error.message }),
+                    JSON.stringify({
+                        success: false,
+                        error: '获取快照列表失败',
+                        message: error.message
+                    }),
                     { status: 500 }
                 );
             }
         }
 
         case '/backup/snapshot/batch_delete': {
-            if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+            if (request.method !== 'POST')
+                return new Response('Method Not Allowed', { status: 405 });
             try {
                 const { ids } = (await request.json()) as { ids: string[] };
                 if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -1137,10 +1152,12 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         }
 
         case '/backup/snapshot/delete': {
-            if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+            if (request.method !== 'POST')
+                return new Response('Method Not Allowed', { status: 405 });
             try {
                 const { id } = (await request.json()) as { id: string };
-                if (!id) return new Response(JSON.stringify({ error: '缺少快照ID' }), { status: 400 });
+                if (!id)
+                    return new Response(JSON.stringify({ error: '缺少快照ID' }), { status: 400 });
 
                 const storage = await getStorage(env);
                 const success = await deleteServerSnapshot(storage, id);
@@ -1151,17 +1168,23 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             } catch (error: any) {
                 console.error('[API Error /backup/snapshot/delete]', error);
                 return new Response(
-                    JSON.stringify({ success: false, error: '删除快照失败', message: error.message }),
+                    JSON.stringify({
+                        success: false,
+                        error: '删除快照失败',
+                        message: error.message
+                    }),
                     { status: 500 }
                 );
             }
         }
 
         case '/backup/snapshot/restore': {
-            if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+            if (request.method !== 'POST')
+                return new Response('Method Not Allowed', { status: 405 });
             try {
                 const { id, mode } = (await request.json()) as { id: string; mode?: ImportMode };
-                if (!id) return new Response(JSON.stringify({ error: '缺少快照ID' }), { status: 400 });
+                if (!id)
+                    return new Response(JSON.stringify({ error: '缺少快照ID' }), { status: 400 });
 
                 const storage = await getStorage(env);
                 const result = await restoreFromServerSnapshot(storage, id, mode || 'overwrite');
@@ -1172,7 +1195,11 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
             } catch (error: any) {
                 console.error('[API Error /backup/snapshot/restore]', error);
                 return new Response(
-                    JSON.stringify({ success: false, error: '恢复快照失败', message: error.message }),
+                    JSON.stringify({
+                        success: false,
+                        error: '恢复快照失败',
+                        message: error.message
+                    }),
                     { status: 500 }
                 );
             }

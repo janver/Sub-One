@@ -144,7 +144,11 @@ export class ClashConverter extends BaseConverter {
                 if (node.alpn) node.alpn = Array.isArray(node.alpn) ? node.alpn : [node.alpn];
                 if (node.tfo && !node['fast-open']) node['fast-open'] = node.tfo;
                 // TUIC v5: 无 token 时自动补 version=5
-                if (node.type === 'tuic' && (!node.token || node.token.length === 0) && !isPresent(node, 'version')) {
+                if (
+                    node.type === 'tuic' &&
+                    (!node.token || node.token.length === 0) &&
+                    !isPresent(node, 'version')
+                ) {
                     node.version = 5;
                 }
             } else if (node.type === 'anytls') {

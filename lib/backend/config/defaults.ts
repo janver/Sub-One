@@ -5,7 +5,6 @@ export const defaultSettings: AppConfig = {
     mytoken: 'auto',
     profileToken: '',
 
-
     prependSubName: false,
     dedupe: false,
 

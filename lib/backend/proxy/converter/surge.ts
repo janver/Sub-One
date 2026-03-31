@@ -102,9 +102,11 @@ export class SurgeConverter extends BaseConverter {
         return result.toString();
     }
 
-    private trojan(proxy: ProxyNode): string {        if (proxy['reality-opts']) {
+    private trojan(proxy: ProxyNode): string {
+        if (proxy['reality-opts']) {
             throw new Error('[SurgeConverter] Surge does not support Trojan with reality');
-        }        const result = new Result(proxy);
+        }
+        const result = new Result(proxy);
         result.append(
             `${proxy.name}=trojan,${proxy.server},${proxy.port},password=\"${proxy.password}\"`
         );
@@ -302,7 +304,10 @@ export class SurgeConverter extends BaseConverter {
         );
 
         // session params
-        if (isPresent(proxy, 'idle-session-timeout') && Number.isInteger(proxy['idle-session-timeout'])) {
+        if (
+            isPresent(proxy, 'idle-session-timeout') &&
+            Number.isInteger(proxy['idle-session-timeout'])
+        ) {
             result.append(`,idle-session-timeout=${proxy['idle-session-timeout']}`);
         }
         if (isPresent(proxy, 'max-stream-count') && Number.isInteger(proxy['max-stream-count'])) {

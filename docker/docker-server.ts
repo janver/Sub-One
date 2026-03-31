@@ -1,8 +1,8 @@
+import Database from 'better-sqlite3';
 import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import Database from 'better-sqlite3';
 
 import { handleApiRequest } from '../lib/backend/api/handlers';
 import { handleSubRequest } from '../lib/backend/subscription/handler';
@@ -44,7 +44,7 @@ class NodeD1PreparedStatement {
         private db: Database.Database,
         private query: string,
         private params: any[] = []
-    ) { }
+    ) {}
 
     bind(...params: any[]) {
         return new NodeD1PreparedStatement(this.db, this.query, params);
@@ -66,7 +66,10 @@ class NodeD1PreparedStatement {
         try {
             const stmt = this.db.prepare(this.query);
             const info = stmt.run(...this.params);
-            return { success: true, meta: { changes: info.changes, last_row_id: info.lastInsertRowid } };
+            return {
+                success: true,
+                meta: { changes: info.changes, last_row_id: info.lastInsertRowid }
+            };
         } catch (err) {
             console.error('D1 run error:', err);
             throw err;
@@ -96,7 +99,7 @@ class NodeD1PreparedStatement {
 }
 
 class NodeD1 {
-    constructor(private db: Database.Database) { }
+    constructor(private db: Database.Database) {}
 
     prepare(query: string) {
         return new NodeD1PreparedStatement(this.db, query);

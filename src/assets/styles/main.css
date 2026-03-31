@@ -7,85 +7,122 @@
  * ============================================================================
  */
 
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --color-primary-50: hsl(243, 100%, 97%);
-  --color-primary-100: hsl(243, 96%, 94%);
-  --color-primary-200: hsl(242, 96%, 88%);
-  --color-primary-300: hsl(243, 94%, 80%);
-  --color-primary-400: hsl(243, 87%, 70%);
-  --color-primary-500: hsl(243, 75%, 59%);
-  --color-primary-600: hsl(243, 61%, 48%);
-  --color-primary-700: hsl(243, 58%, 39%);
-  --color-primary-800: hsl(243, 54%, 31%);
-  --color-primary-900: hsl(243, 47%, 24%);
+    --color-primary-50: hsl(243, 100%, 97%);
+    --color-primary-100: hsl(243, 96%, 94%);
+    --color-primary-200: hsl(242, 96%, 88%);
+    --color-primary-300: hsl(243, 94%, 80%);
+    --color-primary-400: hsl(243, 87%, 70%);
+    --color-primary-500: hsl(243, 75%, 59%);
+    --color-primary-600: hsl(243, 61%, 48%);
+    --color-primary-700: hsl(243, 58%, 39%);
+    --color-primary-800: hsl(243, 54%, 31%);
+    --color-primary-900: hsl(243, 47%, 24%);
 
-  --color-secondary-50: hsl(280, 100%, 97%);
-  --color-secondary-100: hsl(280, 95%, 93%);
-  --color-secondary-200: hsl(279, 93%, 86%);
-  --color-secondary-300: hsl(280, 91%, 76%);
-  --color-secondary-400: hsl(280, 84%, 65%);
-  --color-secondary-500: hsl(280, 72%, 54%);
-  --color-secondary-600: hsl(280, 61%, 45%);
-  --color-secondary-700: hsl(280, 59%, 37%);
-  --color-secondary-800: hsl(280, 54%, 30%);
-  --color-secondary-900: hsl(280, 48%, 24%);
+    --color-secondary-50: hsl(280, 100%, 97%);
+    --color-secondary-100: hsl(280, 95%, 93%);
+    --color-secondary-200: hsl(279, 93%, 86%);
+    --color-secondary-300: hsl(280, 91%, 76%);
+    --color-secondary-400: hsl(280, 84%, 65%);
+    --color-secondary-500: hsl(280, 72%, 54%);
+    --color-secondary-600: hsl(280, 61%, 45%);
+    --color-secondary-700: hsl(280, 59%, 37%);
+    --color-secondary-800: hsl(280, 54%, 30%);
+    --color-secondary-900: hsl(280, 48%, 24%);
 
-  --color-accent-cyan: hsl(189, 94%, 43%);
-  --color-accent-pink: hsl(328, 85%, 70%);
-  --color-accent-orange: hsl(25, 95%, 53%);
-  --color-accent-green: hsl(142, 71%, 45%);
+    --color-accent-cyan: hsl(189, 94%, 43%);
+    --color-accent-pink: hsl(328, 85%, 70%);
+    --color-accent-orange: hsl(25, 95%, 53%);
+    --color-accent-green: hsl(142, 71%, 45%);
 
-  --spacing-18: 4.5rem;
-  --spacing-88: 22rem;
+    --spacing-18: 4.5rem;
+    --spacing-88: 22rem;
 
-  --radius-4xl: 2rem;
+    --radius-4xl: 2rem;
 
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.1);
-  --shadow-glass-dark: 0 8px 32px rgba(0, 0, 0, 0.3);
-  --shadow-glow-primary: 0 0 30px rgba(99, 102, 241, 0.4);
-  --shadow-glow-secondary: 0 0 30px rgba(168, 85, 247, 0.4);
+    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --shadow-glass-dark: 0 8px 32px rgba(0, 0, 0, 0.3);
+    --shadow-glow-primary: 0 0 30px rgba(99, 102, 241, 0.4);
+    --shadow-glow-secondary: 0 0 30px rgba(168, 85, 247, 0.4);
 
-  --font-sans: "Nunito", "Quicksand", "PingFang SC", "Microsoft YaHei", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", "Menlo", "Monaco", monospace;
+    --font-sans:
+        'Nunito', 'Quicksand', 'PingFang SC', 'Microsoft YaHei', 'Inter', -apple-system,
+        BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Menlo', 'Monaco', monospace;
 
-  --animate-fade-in: fadeIn 0.3s ease-out;
-  --animate-fade-in-up: fadeInUp 0.3s ease-out;
-  --animate-fade-in-down: fadeInDown 0.3s ease-out;
-  --animate-scale-in: scaleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  --animate-slide-up: slideUp 0.3s ease-out;
-  --animate-shimmer: shimmer 2s infinite;
-  --animate-pulse-slow: pulse-slow 3s ease-in-out infinite;
+    --animate-fade-in: fadeIn 0.3s ease-out;
+    --animate-fade-in-up: fadeInUp 0.3s ease-out;
+    --animate-fade-in-down: fadeInDown 0.3s ease-out;
+    --animate-scale-in: scaleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --animate-slide-up: slideUp 0.3s ease-out;
+    --animate-shimmer: shimmer 2s infinite;
+    --animate-pulse-slow: pulse-slow 3s ease-in-out infinite;
 
-  @keyframes fadeIn {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
-  }
-  @keyframes fadeInUp {
-    0% { opacity: 0; transform: translateY(20px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fadeInDown {
-    0% { opacity: 0; transform: translateY(-20px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes scaleIn {
-    0% { opacity: 0; transform: scale(0.9); }
-    100% { opacity: 1; transform: scale(1); }
-  }
-  @keyframes slideUp {
-    0% { transform: translateY(100%); }
-    100% { transform: translateY(0); }
-  }
-  @keyframes shimmer {
-    0% { background-position: -1000px 0; }
-    100% { background-position: 1000px 0; }
-  }
-  @keyframes pulse-slow {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.75; }
-  }
+    @keyframes fadeIn {
+        0% {
+            opacity: 0;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+    @keyframes fadeInUp {
+        0% {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    @keyframes fadeInDown {
+        0% {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    @keyframes scaleIn {
+        0% {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    @keyframes slideUp {
+        0% {
+            transform: translateY(100%);
+        }
+        100% {
+            transform: translateY(0);
+        }
+    }
+    @keyframes shimmer {
+        0% {
+            background-position: -1000px 0;
+        }
+        100% {
+            background-position: 1000px 0;
+        }
+    }
+    @keyframes pulse-slow {
+        0%,
+        100% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.75;
+        }
+    }
 }
 
 /* ==================== Base Layer - 基础样式 ==================== */
@@ -114,7 +151,7 @@
     }
 
     ::-webkit-scrollbar-thumb {
-        @apply rounded-full bg-linear-to-r from-primary-500 to-secondary-500;
+        @apply from-primary-500 to-secondary-500 rounded-full bg-linear-to-r;
         background-clip: padding-box;
         @apply transition-all duration-300;
     }
@@ -143,7 +180,7 @@
     textarea:focus-visible,
     select:focus-visible,
     button:focus-visible {
-        @apply border-primary-500 outline-none ring-0;
+        @apply border-primary-500 ring-0 outline-none;
     }
 
     html.dark input:focus-visible,
@@ -229,7 +266,7 @@
         @apply border-2 border-gray-300 dark:border-gray-700;
         @apply text-gray-900 dark:text-gray-100;
         @apply placeholder-gray-400 dark:placeholder-gray-500;
-        @apply focus:border-primary-500 focus:outline-none focus:ring-0;
+        @apply focus:border-primary-500 focus:ring-0 focus:outline-none;
         @apply transition-all duration-300;
     }
 
@@ -239,7 +276,7 @@
         @apply border-2 border-gray-300 dark:border-gray-700;
         @apply text-gray-900 dark:text-gray-100;
         @apply placeholder-gray-500 dark:placeholder-gray-400;
-        @apply focus:border-primary-500 focus:outline-none focus:ring-0;
+        @apply focus:border-primary-500 focus:ring-0 focus:outline-none;
         @apply transition-all duration-300;
     }
 
@@ -249,19 +286,19 @@
         @apply border-2 border-gray-300 dark:border-gray-700;
         @apply text-gray-900 dark:text-gray-100;
         @apply placeholder-gray-500 dark:placeholder-gray-400;
-        @apply focus:border-primary-500 focus:outline-none focus:ring-0;
+        @apply focus:border-primary-500 focus:ring-0 focus:outline-none;
         @apply transition-all duration-300;
         @apply shadow-sm hover:shadow-md focus:shadow-none;
     }
 
     .search-input-unified {
-        @apply w-full py-2.5 pl-11 pr-4;
+        @apply w-full py-2.5 pr-4 pl-11;
         @apply bg-white dark:bg-gray-800;
         @apply border border-gray-300 dark:border-gray-700;
         @apply rounded-xl;
         @apply text-sm text-gray-900 dark:text-gray-100;
         @apply placeholder-gray-400 dark:placeholder-gray-500;
-        @apply focus:border-primary-500 focus:outline-none focus:ring-0;
+        @apply focus:border-primary-500 focus:ring-0 focus:outline-none;
         @apply transition-all duration-300;
         @apply shadow-sm hover:shadow-md focus:shadow-none;
     }
@@ -294,7 +331,7 @@
     /* ===== LoginView 特定样式 ===== */
 
     .form-input-login {
-        @apply w-full rounded-xl px-4 py-3.5 pr-12 text-[0.9375rem] outline-none transition-all duration-300;
+        @apply w-full rounded-xl px-4 py-3.5 pr-12 text-[0.9375rem] transition-all duration-300 outline-none;
         @apply text-gray-900 dark:text-gray-50;
         @apply bg-gray-50 dark:bg-gray-800;
         @apply border-2 border-gray-300 dark:border-gray-700;
@@ -302,7 +339,7 @@
 
     .form-input-login:focus,
     .form-input-login:focus-visible {
-        @apply border-primary-500 bg-white dark:bg-gray-800 outline-none;
+        @apply border-primary-500 bg-white outline-none dark:bg-gray-800;
         box-shadow: none !important;
     }
 
@@ -502,7 +539,7 @@
     }
 
     .loading-spinner-outer {
-        @apply border-r-purple-500 border-t-indigo-500;
+        @apply border-t-indigo-500 border-r-purple-500;
     }
 
     .loading-spinner-inner {
@@ -543,7 +580,7 @@
 @layer utilities {
     /* 渐变文字 */
     .gradient-text {
-        @apply bg-linear-to-r from-primary-600 to-secondary-600;
+        @apply from-primary-600 to-secondary-600 bg-linear-to-r;
         @apply bg-clip-text text-transparent;
     }
 

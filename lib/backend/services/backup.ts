@@ -7,7 +7,13 @@
  * - 验证备份文件的完整性
  * - 支持覆盖和合并两种恢复模式
  */
-import { KV_KEY_PROFILES, KV_KEY_SETTINGS, KV_KEY_SUBS, KV_KEY_USERS, KV_KEY_BACKUPS } from '../config/constants';
+import {
+    KV_KEY_BACKUPS,
+    KV_KEY_PROFILES,
+    KV_KEY_SETTINGS,
+    KV_KEY_SUBS,
+    KV_KEY_USERS
+} from '../config/constants';
 import { IStorageService } from './storage';
 
 /**
@@ -117,13 +123,13 @@ export async function exportAllData(
 
         const proxyCount = Array.isArray(subscriptions)
             ? subscriptions.reduce((acc: number, s: any) => {
-                // 如果是订阅（有URL），累加其 nodeCount
-                if (s.url && /^https?:\/\//.test(s.url)) {
-                    return acc + (s.nodeCount || 0);
-                }
-                // 如果是手动节点（无URL），计为 1
-                return acc + 1;
-            }, 0)
+                  // 如果是订阅（有URL），累加其 nodeCount
+                  if (s.url && /^https?:\/\//.test(s.url)) {
+                      return acc + (s.nodeCount || 0);
+                  }
+                  // 如果是手动节点（无URL），计为 1
+                  return acc + 1;
+              }, 0)
             : 0;
 
         // 2. 构建元数据
@@ -301,8 +307,8 @@ export async function importAllData(
             // 合并模式：保留现有数据，更新匹配项，添加新项
             const [existingSubs, existingProfiles, existingSettings, existingUsers] =
                 await Promise.all([
-                    storage.get(KV_KEY_SUBS).then(res => (res || []) as any[]),
-                    storage.get(KV_KEY_PROFILES).then(res => (res || []) as any[]),
+                    storage.get(KV_KEY_SUBS).then((res) => (res || []) as any[]),
+                    storage.get(KV_KEY_PROFILES).then((res) => (res || []) as any[]),
                     storage.get(KV_KEY_SETTINGS),
                     storage.get(KV_KEY_USERS)
                 ]);
@@ -421,7 +427,9 @@ export async function createServerSnapshot(
         id: snapshotId,
         timestamp: backupData.timestamp,
         // 使用 Asia/Shanghai 时区生成默认名称，确保与前端显示（通常是本地时间/+8区）一致
-        name: name || `快照 ${new Date(backupData.timestamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`,
+        name:
+            name ||
+            `快照 ${new Date(backupData.timestamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`,
         metadata: backupData.metadata
     };
 

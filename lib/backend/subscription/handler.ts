@@ -107,11 +107,11 @@ async function convertViaExternalApi(
     // 很多外部 API (subconverter) 不认识 mihomo 或 stash，需要映射为标准名称
     let apiTarget = targetFormat.toLowerCase();
     const targetMapping: Record<string, string> = {
-        'mihomo': 'clash',
-        'stash': 'clash',
-        'quantumultx': 'quanx',
-        'v2ray': 'v2ray',
-        'shadowrocket': 'ss' // 某些老的 API 可能需要这一层映射，或者保持 shadowrocket
+        mihomo: 'clash',
+        stash: 'clash',
+        quantumultx: 'quanx',
+        v2ray: 'v2ray',
+        shadowrocket: 'ss' // 某些老的 API 可能需要这一层映射，或者保持 shadowrocket
     };
 
     if (targetMapping[apiTarget]) {
@@ -130,7 +130,7 @@ async function convertViaExternalApi(
 
         // 基础参数
         apiUrl.searchParams.set('target', apiTarget);
-        
+
         // 针对 Surge 的特殊处理：添加版本参数
         if (apiTarget === 'surge') {
             apiUrl.searchParams.set('ver', '4');
@@ -140,7 +140,9 @@ async function convertViaExternalApi(
         apiUrl.searchParams.set('filename', filename);
         apiUrl.searchParams.set('emoji', 'true');
 
-        console.log(`Calling external converter API: ${apiUrl.origin}${apiUrl.pathname}?target=${targetFormat}...`);
+        console.log(
+            `Calling external converter API: ${apiUrl.origin}${apiUrl.pathname}?target=${targetFormat}...`
+        );
 
         const response = await fetch(apiUrl.toString(), {
             method: 'GET',
@@ -151,7 +153,9 @@ async function convertViaExternalApi(
 
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`外部转换API返回错误 (${response.status}): ${errorText.substring(0, 100)}`);
+            throw new Error(
+                `外部转换API返回错误 (${response.status}): ${errorText.substring(0, 100)}`
+            );
         }
 
         return await response.text();
@@ -162,7 +166,6 @@ async function convertViaExternalApi(
         throw err;
     }
 }
-
 
 export async function handleSubRequest(
     context: EventContext<Env, string, unknown>
@@ -393,12 +396,12 @@ export async function handleSubRequest(
             !isSimpleTarget
         ) {
             console.log('Using external converter API (Callback Mode)');
-            
+
             // 构建一个指向当前 Sub-One 的回调链接，让外部 API 来抓取处理好的 base64 节点
             const callbackUrl = new URL(request.url);
             callbackUrl.searchParams.set('target', 'base64');
             callbackUrl.searchParams.set('_internal', 'true'); // 关键：告诉下一级请求只返回节点，不要再调外部 API
-            
+
             // 某些外部 API 需要正确的 User-Agent 才能从 Sub-One 抓取数据
             // 我们直接调用外部 API
             const finalApiUrl = config.externalConverterUrl.trim();
@@ -410,7 +413,9 @@ export async function handleSubRequest(
             );
         } else {
             // --- 内置转换模式 (或者是回调请求本身) ---
-            console.log(isInternalFetch ? 'Serving internal nodes fetch' : 'Using built-in converter');
+            console.log(
+                isInternalFetch ? 'Serving internal nodes fetch' : 'Using built-in converter'
+            );
             const combinedNodes = await generateCombinedNodeList(
                 config,
                 upstreamUserAgent,

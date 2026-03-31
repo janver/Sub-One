@@ -165,7 +165,10 @@ export class SurfboardConverter extends BaseConverter {
 
         // TLS verification
         result.appendIfPresent(`,sni=${proxy.sni}`, 'sni');
-        result.appendIfPresent(`,skip-cert-verify=${proxy['skip-cert-verify']}`, 'skip-cert-verify');
+        result.appendIfPresent(
+            `,skip-cert-verify=${proxy['skip-cert-verify']}`,
+            'skip-cert-verify'
+        );
 
         // TFO
         result.appendIfPresent(`,tfo=${proxy.tfo}`, 'tfo');

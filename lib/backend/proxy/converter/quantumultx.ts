@@ -129,8 +129,9 @@ export class QuantumultXConverter extends BaseConverter {
         }
 
         // 只在 ws/http 传输时才读对应的 opts，避免 tcp 节点错误带入 ws 路径/Host
-        const netForOpts = proxy.network === 'ws' || proxy.network === 'http' ? proxy.network : null;
-        const opts = netForOpts ? (proxy[`${netForOpts}-opts`] || {}) as any : {};
+        const netForOpts =
+            proxy.network === 'ws' || proxy.network === 'http' ? proxy.network : null;
+        const opts = netForOpts ? ((proxy[`${netForOpts}-opts`] || {}) as any) : {};
         if (opts.path)
             result.append(`,obfs-uri=${Array.isArray(opts.path) ? opts.path[0] : opts.path}`);
         if (opts.headers?.Host)
@@ -160,10 +161,13 @@ export class QuantumultXConverter extends BaseConverter {
         }
 
         // 只在 ws/http 传输时才读对应的 opts
-        const netForVlessOpts = proxy.network === 'ws' || proxy.network === 'http' ? proxy.network : null;
-        const vlessOpts = netForVlessOpts ? (proxy[`${netForVlessOpts}-opts`] || {}) as any : {};
+        const netForVlessOpts =
+            proxy.network === 'ws' || proxy.network === 'http' ? proxy.network : null;
+        const vlessOpts = netForVlessOpts ? ((proxy[`${netForVlessOpts}-opts`] || {}) as any) : {};
         if (vlessOpts.path)
-            result.append(`,obfs-uri=${Array.isArray(vlessOpts.path) ? vlessOpts.path[0] : vlessOpts.path}`);
+            result.append(
+                `,obfs-uri=${Array.isArray(vlessOpts.path) ? vlessOpts.path[0] : vlessOpts.path}`
+            );
         if (vlessOpts.headers?.Host)
             result.append(
                 `,obfs-host=${Array.isArray(vlessOpts.headers.Host) ? vlessOpts.headers.Host[0] : vlessOpts.headers.Host}`

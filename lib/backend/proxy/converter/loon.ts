@@ -309,20 +309,23 @@ export class LoonConverter extends BaseConverter {
         result.append(`${proxy.name}=anytls,${proxy.server},${proxy.port},"${proxy.password}"`);
 
         // Session 参数（只附加整数值）
-        for (const key of [
-            'idle-session-timeout',
-            'max-stream-count'
-        ] as const) {
+        for (const key of ['idle-session-timeout', 'max-stream-count'] as const) {
             if (isPresent(proxy, key) && Number.isInteger(proxy[key])) {
                 result.append(`,${key}=${proxy[key]}`);
             }
         }
 
         // TLS验证
-        result.appendIfPresent(`,skip-cert-verify=${proxy['skip-cert-verify']}`, 'skip-cert-verify');
+        result.appendIfPresent(
+            `,skip-cert-verify=${proxy['skip-cert-verify']}`,
+            'skip-cert-verify'
+        );
         result.appendIfPresent(`,tls-name=${proxy.sni}`, 'sni');
         result.appendIfPresent(`,tls-cert-sha256=${proxy['tls-fingerprint']}`, 'tls-fingerprint');
-        result.appendIfPresent(`,tls-pubkey-sha256=${proxy['tls-pubkey-sha256']}`, 'tls-pubkey-sha256');
+        result.appendIfPresent(
+            `,tls-pubkey-sha256=${proxy['tls-pubkey-sha256']}`,
+            'tls-pubkey-sha256'
+        );
 
         // TFO
         result.appendIfPresent(`,fast-open=${proxy.tfo}`, 'tfo');
