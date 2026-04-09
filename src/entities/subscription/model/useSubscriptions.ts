@@ -117,6 +117,14 @@ export function useSubscriptions(
                     if (s.isUpdating) s.isUpdating = false;
                 });
 
+                // 发送 TG 通知（仪表板立即更新）
+                if (successCount > 0) {
+                    const message = `🔄 *批量更新完成*\n\n✅ 成功更新了 \`${successCount}\` 个订阅`;
+                    api.sendNotification(message).catch((err) => {
+                        console.error('发送 TG 通知失败:', err);
+                    });
+                }
+
                 return { success: true, count: successCount };
             } else {
                 throw new Error(result.message);

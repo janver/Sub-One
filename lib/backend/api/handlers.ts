@@ -322,40 +322,10 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                     );
                 }
 
-                // 步骤4: 获取设置（带错误处理）
+                // 步骤4: 获取存储服务
                 const storage = await getStorage(env);
-                let settings;
-                try {
-                    settings = (await storage.get<AppConfig>(KV_KEY_SETTINGS)) || defaultSettings;
-                } catch (settingsError) {
-                    console.error('[API Error /subs] 获取设置失败:', settingsError);
-                    settings = defaultSettings; // 使用默认设置继续
-                }
 
-                // 步骤5: 处理通知（非阻塞，错误不影响保存）
-                try {
-                    const notificationPromises = subs
-                        .filter((sub: Subscription) => sub && sub.url && sub.url.startsWith('http'))
-                        .map((sub: Subscription) =>
-                            checkAndNotify(sub, settings as AppConfig).catch((notifyError) => {
-                                console.error(
-                                    `[API Warning /subs] 通知处理失败 for ${sub.url}:`,
-                                    notifyError
-                                );
-                                // 通知失败不影响保存流程
-                            })
-                        );
-
-                    // 并行处理通知，但不等待完成
-                    Promise.all(notificationPromises).catch((e) => {
-                        console.error('[API Warning /subs] 部分通知处理失败:', e);
-                    });
-                } catch (notificationError) {
-                    console.error('[API Warning /subs] 通知系统错误:', notificationError);
-                    // 继续保存流程
-                }
-
-                // 步骤6: 保存数据到存储（使用条件写入）
+                // 步骤5: 保存数据到存储（使用条件写入）
                 try {
                     await Promise.all([
                         storage.put(KV_KEY_SUBS, subs),
@@ -667,6 +637,15 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
                 if (hasChanges) {
                     await storage.put(KV_KEY_SUBS, latestSubs);
                 }
+
+                // 检查到期和流量预警（非阻塞）
+                const settings =
+                    (await storage.get<Partial<AppConfig>>(KV_KEY_SETTINGS)) || defaultSettings;
+                latestSubs.forEach((sub) => {
+                    checkAndNotify(sub, settings as AppConfig).catch((err) => {
+                        console.error(`[Batch Update] 通知检查失败 for ${sub.name}:`, err);
+                    });
+                });
 
                 console.log(
                     `[Batch Update] Completed batch update, ${updateResultsArray.filter((r) => r.success).length} successful`

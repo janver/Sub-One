@@ -2,7 +2,7 @@ import { KV_KEY_SETTINGS, KV_KEY_SUBS } from '../config/constants';
 import { GLOBAL_USER_AGENT, defaultSettings } from '../config/defaults';
 import { parse } from '../proxy';
 import { AppConfig, Subscription, SubscriptionUserInfo } from '../proxy/types';
-import { sendTgNotification } from '../services/notification';
+import { checkAndNotify, sendTgNotification } from '../services/notification';
 import { StorageFactory } from '../services/storage';
 import { getStorageBackendInfo } from '../services/storage-backend';
 import { Env } from '../types';
@@ -67,7 +67,8 @@ export async function handleCronTrigger(env: Env): Promise<Response> {
                     sub.userInfo = info as SubscriptionUserInfo;
                     updateData.userInfo = info as SubscriptionUserInfo;
 
-                    // 注意：到期/流量预警通知已移除，只保留定时更新报告
+                    // 检查到期和流量预警
+                    await checkAndNotify(sub, settings as AppConfig);
                     hasUpdate = true;
                 }
 
