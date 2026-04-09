@@ -707,13 +707,14 @@ watch(
                                         type="checkbox"
                                         class="peer sr-only"
                                     />
+                                    <!-- 背景轨道 -->
                                     <div
                                         class="h-6 w-11 rounded-full bg-gray-300 transition-colors peer-checked:bg-indigo-600 peer-focus:ring-2 peer-focus:ring-indigo-500 peer-focus:ring-offset-2 dark:bg-gray-600 dark:peer-focus:ring-offset-gray-800"
-                                    >
-                                        <span
-                                            class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5"
-                                        ></span>
-                                    </div>
+                                    ></div>
+                                    <!-- 滑块 -->
+                                    <span
+                                        class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5"
+                                    ></span>
                                 </label>
                             </div>
 
